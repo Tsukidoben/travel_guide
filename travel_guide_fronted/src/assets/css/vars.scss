@@ -1,0 +1,173 @@
+//默认阴影
+$base-box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+$global-background: #F8F8FF;
+$sys-20-padding: 20px;
+$sys-10-padding: 20px;
+
+// 左侧菜单背景颜色
+$theme-color:#FF8A45;
+$pageBack:#fcf9f7;
+$side-bar-background: #F8F2E9;
+$side-bar-color: #7A5C43;
+$side-bar-container-fontColor: #7A5C43;
+$side-bar-container-hoverBackColor: #FDE6D8;
+$side-bar-container-hoverColor: #FF8A45;
+$side-bar-container-isActiveBackColor: #FF8A45;
+$side-bar-container-isActiveColor: #FFFFFF;
+
+// 管理端顶部样式
+$nav-bar-background: #FF8A45;
+$nav-bar-color: #FFFFFF;
+$own-nav-bar-box: $side-bar-container-fontColor;
+$own-nav-bar-box-back: $side-bar-container-isActiveColor;
+$nav-user-hover-background-color: #C8692E;
+$nav-user-hover-color: #FFFFFF;
+
+//标签页鼠标移入时tabs-item的背景色
+$base-tabs-item-hover-bg: #f5f6f8;
+//水平导航模式时二级菜单选中背景色
+$base-sub-menu-active-bg: #dee2ff;
+
+// 系统主题色
+$base-system-color: #37839a;
+
+$phone-max-width: 600px;
+$phone-width: 600px;
+
+//菜单背景margin
+$base-menu-bg-margin: 10px;
+// 图标盒子高度
+$icon-height: 64px;
+// 图标大小
+$icon-img-height: 50px;
+$icon-img-width: 50px;
+// 顶部栏高度
+$base-nav-bar-height: $icon-height;
+//纵向布局时左侧导航未折叠时的宽度
+$base-left-menu-width: 232px;
+//纵向布局时左侧导航未折叠时右侧内容的宽度
+$base-right-content-width: calc(100vw - #{$base-left-menu-width});
+//纵向布局时左侧导航已折叠时的宽度
+$base-left-menu-width-min: 64px;
+//纵向布局时左侧导航已折叠时右侧内容的宽度
+$base-right-content-width-min: calc(100vw - #{$base-left-menu-width-min});
+//app-main的高度 100vh - #{$base-nav-bar-height} - #{$base-tabs-bar-height} - #{$base-content-margin}*2
+$base-app-main-height: calc(
+100vh - #{$base-nav-bar-height}
+);
+//默认动画
+$base-transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1), border 0s,
+                                                                         background 0s, color 0s, font-size 0s;
+//默认动画长
+$base-transition-time: 0.3s;
+$base-border: 1px solid rgba(0,0,0,.1);
+
+
+//front 头部
+$nav-height:72px;
+$nav-border:1px solid #eee;
+$radio-underline:#3498db;
+$radio-color-active:#f1c40f;
+// 系统默认主题色
+$color: rgb(58,122,174);
+$color1: #fff;
+// 对话框默认样式
+::v-deep {
+  .el-dialog__header {
+    padding: 10px !important;
+    border-bottom: $base-border !important;
+    background: $side-bar-background;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+
+    .el-dialog__title {
+      color: $side-bar-color !important;
+    }
+
+    .el-dialog__headerbtn {
+      position: unset;
+      display: flex;
+      align-items: center;
+
+      .el-dialog__close {
+        color: $side-bar-color !important;
+      }
+
+      .el-dialog__close:hover {
+        color: $side-bar-container-hoverColor !important;
+        font-weight: bold;
+        transform: scale(1.2);
+      }
+    }
+  }
+
+  .el-dialog__body {
+    padding: 10px;
+  }
+
+  .el-dialog__footer {
+    padding: 10px !important;
+    border-top: $base-border !important;
+  }
+}
+
+// 默认按钮主题色
+::v-deep .el-button--primary.btnStyle {
+  background: $color;
+  border-color: $color;
+}
+
+// 个人中心左侧$my-center-left-background: rgb(2, 116, 189);
+.my-center-box ::v-deep {
+  .el-button--primary.btnStyle {
+    background: $color;
+    border-color: $color;
+  }
+
+  .el-menu {
+    background: $color;
+  }
+
+  .el-menu-item {
+    background: $color;
+    color: #fff;
+
+    .iconfont {
+      color: #fff;
+    }
+
+    i {
+      color: #fff;
+    }
+  }
+
+  .el-menu-item.is-active {
+    background: #fff !important;
+    color: #000 !important;
+
+    .iconfont {
+      color: #000;
+    }
+
+    i {
+      color: #000;
+    }
+  }
+}
+
+
+// table.scss所需要的
+$item-box-min-height: 50px;
+$item-box-line-height: $item-box-min-height;
+$item-margin-top: 0;
+$item-box-padding: 0px 10px;
+$data-box-padding: 10px 10px;
+$own-list-table-pagination-height: 52px;
+$own-list-tree-width: 250px;
+
+//front 头部
+$theme-colorFront:$theme-color;
+$nav-background: #F0F2F5;
+$nav-color:$theme-colorFront;
+$radioSel-color:$theme-color;

@@ -1,0 +1,112 @@
+{
+  "groups": [
+    {
+      "name": "alipay",
+      "type": "com.own.common.config.AliPayConfig",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "com.own.properties",
+      "type": "com.own.common.config.CustomYmlProperties",
+      "sourceType": "com.own.common.config.CustomYmlProperties"
+    },
+    {
+      "name": "com.own.properties.jwt",
+      "type": "com.own.common.config.CustomYmlProperties$jwt",
+      "sourceType": "com.own.common.config.CustomYmlProperties"
+    },
+    {
+      "name": "com.own.properties.login",
+      "type": "com.own.common.config.CustomYmlProperties$LoginInfo",
+      "sourceType": "com.own.common.config.CustomYmlProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "alipay.alipay-public-key",
+      "type": "java.lang.String",
+      "description": "支付宝私钥",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "alipay.app-id",
+      "type": "java.lang.String",
+      "description": "appId",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "alipay.app-private-key",
+      "type": "java.lang.String",
+      "description": "应用私钥",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "alipay.app-public-key",
+      "type": "java.lang.String",
+      "description": "应用公钥",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "alipay.charset",
+      "type": "java.lang.String",
+      "description": "字符集",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "alipay.format",
+      "type": "java.lang.String",
+      "description": "格式化",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "alipay.gateway-url",
+      "type": "java.lang.String",
+      "description": "支付宝网关",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "alipay.notify-url",
+      "type": "java.lang.String",
+      "description": "支付成功回调接口",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "alipay.return-url",
+      "type": "java.lang.String",
+      "description": "支付成功前端跳转",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "alipay.sign-type",
+      "type": "java.lang.String",
+      "description": "加密类型",
+      "sourceType": "com.own.common.config.AliPayConfig"
+    },
+    {
+      "name": "com.own.properties.jwt.expire-time",
+      "type": "java.lang.Long",
+      "sourceType": "com.own.common.config.CustomYmlProperties$jwt"
+    },
+    {
+      "name": "com.own.properties.jwt.key",
+      "type": "java.lang.String",
+      "sourceType": "com.own.common.config.CustomYmlProperties$jwt"
+    },
+    {
+      "name": "com.own.properties.login.error-max-count",
+      "type": "java.lang.Integer",
+      "sourceType": "com.own.common.config.CustomYmlProperties$LoginInfo"
+    },
+    {
+      "name": "com.own.properties.login.is-need-captcha",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.own.common.config.CustomYmlProperties$LoginInfo"
+    },
+    {
+      "name": "com.own.properties.upload-type",
+      "type": "java.lang.String",
+      "sourceType": "com.own.common.config.CustomYmlProperties"
+    }
+  ],
+  "hints": []
+}

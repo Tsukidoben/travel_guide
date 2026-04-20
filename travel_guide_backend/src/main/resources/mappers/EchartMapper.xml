@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.own.mappers.EchartMapper">
+
+    <!--总订单量，今日订单量，总流水、今日流水-->
+    <select id="adminBoardData" resultType="java.util.Map">
+        select "totalOrder" as type, COUNT(*) as count from attraction_order where order_state in ('20','80')
+        UNION ALL
+        select "todayOrder" as type, COUNT(*) as count from attraction_order where order_state in ('20','80') and DATE(create_time) = CURDATE()
+        UNION ALL
+        select "totalPrice" as type,IFNULL(SUM(total_price),0) as count from attraction_order where order_state in ('20','80')
+        UNION ALL
+        select "todayPrice" as type,IFNULL(SUM(total_price),0) as count from attraction_order where order_state in ('20','80') and DATE(create_time) = CURDATE()
+    </select>
+
+    <select id="typeAttractionOrder" resultType="java.util.Map">
+        SELECT
+            t.id           AS typeId,
+            t.type_name    AS typeName,
+            IFNULL(COUNT(o.id), 0) AS orderCount
+        FROM attraction_type t
+                 LEFT JOIN attraction_info i
+                           ON i.type_id = t.id
+                 LEFT JOIN attraction_order o
+                           ON o.attraction_id = i.id
+                               AND o.order_state IN ('20', '80')
+        GROUP BY t.id, t.type_name
+        ORDER BY t.type_name;
+    </select>
+
+    <select id="adminRecent7Days" resultType="java.util.Map">
+        WITH RECURSIVE dates AS (
+            SELECT CURDATE() AS d
+            UNION ALL
+            SELECT DATE_SUB(d, INTERVAL 1 DAY)
+            FROM dates
+            WHERE d > DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        )
+        SELECT
+            DATE_FORMAT(d.d, '%Y-%m-%d') AS day,
+            IFNULL(SUM(o.total_price), 0) AS total_amount
+        FROM dates d
+                 LEFT JOIN attraction_order o
+                           ON DATE(o.create_time) = d.d
+                               AND o.order_state IN ('20', '80')
+        GROUP BY d.d
+        ORDER BY d.d;
+    </select>
+
+    <select id="boardData" resultType="java.util.Map">
+        select "totalOrder" as type, COUNT(*) as count from hotel_order t1 left join hotel_info t2 on t1.hotel_id = t2.id where t2.creator = #{userId} and t1.order_state in ('20','80')
+        UNION ALL
+        select "todayOrder" as type, COUNT(*) as count from hotel_order t1 left join hotel_info t2 on t1.hotel_id = t2.id where t2.creator = #{userId} and t1.order_state in ('20','80') and DATE(t1.create_time) = CURDATE()
+        UNION ALL
+        select "totalPrice" as type,IFNULL(SUM(total_price),0) as count from hotel_order t1 left join hotel_info t2 on t1.hotel_id = t2.id where t2.creator = #{userId} and t1.order_state in ('20','80')
+        UNION ALL
+        select "todayPrice" as type,IFNULL(SUM(total_price),0) as count from hotel_order t1 left join hotel_info t2 on t1.hotel_id = t2.id where t2.creator = #{userId} and t1.order_state in ('20','80') and DATE(t1.create_time) = CURDATE()
+    </select>
+
+    <select id="hotelTop5" resultType="java.util.Map">
+        SELECT
+            t1.id,
+            t1.htoel_name AS hotelName,
+            COUNT( t2.id ) AS orderCount
+        FROM
+            hotel_info t1
+                LEFT JOIN hotel_order t2 ON t1.id = t2.hotel_id
+                AND t2.order_state IN ( '20', '80' )
+        WHERE t1.creator = #{userId}
+        GROUP BY
+            t1.id
+        ORDER BY
+            orderCount DESC
+        LIMIT 5
+    </select>
+
+    <select id="recent7Days" resultType="java.util.Map">
+        WITH RECURSIVE days AS (
+            SELECT CURDATE() AS d
+            UNION ALL
+            SELECT DATE_SUB(d, INTERVAL 1 DAY)
+            FROM days
+            WHERE d > DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        ),
+                       order_sum AS (
+                           SELECT
+                               DATE(o.create_time) AS d,
+                               SUM(o.total_price) AS amount
+                           FROM hotel_order o
+                                    JOIN hotel_info h ON o.hotel_id = h.id
+                           WHERE h.creator = #{userId}
+                             AND o.order_state in ('20','80')
+                             AND o.create_time >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+                           GROUP BY DATE(o.create_time)
+                       )
+        SELECT
+            days.d AS stat_date,
+            IFNULL(order_sum.amount, 0) AS total_amount
+        FROM days
+                 LEFT JOIN order_sum ON days.d = order_sum.d
+        ORDER BY stat_date;
+    </select>
+</mapper>

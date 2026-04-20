@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <link rel="icon" href="<%= BASE_URL %>min-logo.png">
+    <title>旅游攻略系统</title>
+  </head>
+  <body>
+    <noscript>
+      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+    <div id="app"></div>
+    <!-- built files will be auto injected -->
+  </body>
+
+<style>
+    html,body{
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .el-tooltip__popper.contentPopper {
+        max-width: 500px !important;
+    }
+    .el-popover{
+        padding: 0 !important;
+        .popper__arrow{
+            display: none;
+        }
+    }
+    .el-menu--popup{
+        .el-menu-item:hover{
+            background-color: rgba(255, 138, 69, 0.1) !important;
+            color: #FF8A45 !important;
+        }
+    }
+</style>
+</html>
