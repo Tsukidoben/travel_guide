@@ -16,9 +16,9 @@ const config = {
     frontUrl: host + projectPrefix + '/front',
     mvueUrl: host + projectPrefix + '/manage/home',
     maxLodingTime: 1000 * 60,
-    projectName: "旅游攻略系统",
-    logoTitle: "旅游攻略系统",
-    companyName: "旅游攻略系统",
+    projectName: "贵阳旅游攻略系统",
+    logoTitle: "贵阳旅游攻略系统",
+    companyName: "贵阳旅游攻略系统",
     companyNameE:'TRAVEL-GUIDE',
     msgNumFlag:true,
     routesWhiteList: [
