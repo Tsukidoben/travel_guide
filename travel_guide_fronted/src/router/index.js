@@ -12,7 +12,7 @@ const routes = [
   {
     path: "/",
     name: 'index',
-    redirect: '/manage'
+    redirect: '/login'
   },
   {
     path: "/login",

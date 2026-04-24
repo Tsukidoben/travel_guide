@@ -18,14 +18,14 @@
             <el-table-column type="selection" width="55" />
             <el-table-column type="index" width="55" label="序号" />
             <el-table-column prop="htoelPic" width="100" label="酒店图片">
-              <template #default="{row,$index}">
+              <template #default="{row}">
                 <el-image style="width: 60px;height: 60px" :src="getPicUrlByJson(row.htoelPic,0)" :preview-src-list="[getPicUrlByJson(row.htoelPic,0)]"></el-image>
               </template>
             </el-table-column>
             <el-table-column prop="htoelName" min-width="150" label="酒店名称"/>
             <el-table-column prop="hotelDesc" min-width="180" label="酒店介绍"/>
             <el-table-column prop="hotelDetail" min-width="180" label="酒店描述">
-              <template #default="{row,$index}">
+              <template #default="{row}">
                 <span class="two-line">{{ getHtmlPlainText(row.hotelDetail) }}</span>
               </template>
             </el-table-column>
@@ -77,7 +77,8 @@ export default {
   },
   computed: {
     userRole() {
-      return this.$store.getters.getUser.userRole;
+      const user = this.$store.getters.getUser;
+      return user ? user.userRole : null;
     },
   },
   mounted() {

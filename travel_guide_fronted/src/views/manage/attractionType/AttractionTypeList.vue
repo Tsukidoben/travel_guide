@@ -20,7 +20,7 @@
             <el-table-column prop="typeName" label="分类名称"/>
             <el-table-column prop="typeDesc" label="分类简介"/>
             <el-table-column prop="createTime" width="160" label="创建时间">
-              <template #default="{row,$index}">
+              <template #default="{row}">
                 {{ timestampToYMDHMS(row.createTime) }}
               </template>
             </el-table-column>
@@ -71,7 +71,8 @@ export default {
   },
   computed: {
     userRole() {
-      return this.$store.getters.getUser.userRole;
+      const user = this.$store.getters.getUser;
+      return user ? user.userRole : null;
     },
   },
   mounted() {

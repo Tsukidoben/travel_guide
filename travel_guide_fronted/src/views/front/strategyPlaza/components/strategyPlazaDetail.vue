@@ -127,8 +127,13 @@ export default {
       commentText: '',
       replyId: null,
       replyName: '',
-      currentUserId: this.$store.getters.getUser.id
     };
+  },
+  computed: {
+    currentUserId() {
+      const user = this.$store.getters.getUser;
+      return user ? user.id : null;
+    },
   },
   mounted() { this.getDetail(); },
   methods: {

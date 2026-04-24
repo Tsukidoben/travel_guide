@@ -105,6 +105,42 @@ const manageRoutes = [
                 },
             },
             {
+                path: "foodCategory",
+                name: 'foodCategory',
+                component: () => import('@/views/manage/foodInfo/FoodCategoryList.vue'),
+                meta: {
+                    title: '小吃分类管理',
+                    group: '业务管理'
+                },
+            },
+            {
+                path: "foodInfo",
+                name: 'foodInfo',
+                component: () => import('@/views/manage/foodInfo/FoodInfoList.vue'),
+                meta: {
+                    title: '小吃信息管理',
+                    group: '业务管理'
+                },
+            },
+            {
+                path: "foodShop",
+                name: 'foodShop',
+                component: () => import('@/views/manage/foodInfo/FoodShopList.vue'),
+                meta: {
+                    title: '小吃店铺管理',
+                    group: '业务管理'
+                },
+            },
+            {
+                path: "foodComment",
+                name: 'foodComment',
+                component: () => import('@/views/manage/foodInfo/FoodCommentList.vue'),
+                meta: {
+                    title: '小吃评论管理',
+                    group: '业务管理'
+                },
+            },
+            {
                 path: "hotelInfo",
                 name: 'hotelInfo',
                 component: () => import('@/views/manage/hotelInfo/HotelInfoList.vue'),

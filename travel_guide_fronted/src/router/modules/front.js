@@ -33,6 +33,22 @@ const frontRoutes = [
                 },
             },
             {
+                path: "foodList",
+                name: 'foodList',
+                component: () => import('@/views/front/foodList/foodList.vue'),
+                meta: {
+                    title: '特色小吃'
+                },
+            },
+            {
+                path: "foodDetail",
+                name: 'foodDetail',
+                component: () => import('@/views/front/foodList/components/foodDetail.vue'),
+                meta: {
+                    title: '小吃详情'
+                },
+            },
+            {
                 path: "myCollect",
                 name: 'myCollect',
                 component: () => import('@/views/front/myCollect/myCollect.vue'),

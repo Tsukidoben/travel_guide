@@ -85,8 +85,8 @@ export default {
           { required: true, message: '请选择性别', trigger: 'blur' },
         ],
         password: [
-          { required: true, message: '请输入密码', trigger: 'blur' },
-          { min: 6, max: 20, message: '密码长度应为6-20位', trigger: 'blur' }
+          { required: true, message: '请输入密码', trigger: 'change' },
+          { min: 6, max: 20, message: '密码长度应为6-20位', trigger: 'change' }
         ],
       }
     }

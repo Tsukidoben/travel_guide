@@ -23,7 +23,7 @@
                 <el-table-column type="selection" width="55" />
                 <el-table-column type="index" width="55" label="序号" />
                 <el-table-column prop="attractionId" label="所属景点">
-                  <template #default="{row,$index}">
+                  <template #default="{row}">
                     <span>{{ attractionIdOptions?.find(i=>i.id == row.attractionId)?.attractionName }}</span>
                   </template>
                 </el-table-column>
@@ -31,7 +31,7 @@
                 <el-table-column prop="ticketPrice" label="门票价格"/>
                 <el-table-column prop="useScope" label="使用范围"/>
                 <el-table-column prop="status" label="门票状态">
-                  <template #default="{row,$index}">
+                  <template #default="{row}">
                     <el-tag type="success" v-if="row.status == 1">{{ statusOptions?.find(i=>i.value == row.status)?.label }}</el-tag>
                     <el-tag type="danger" v-if="row.status == 2">{{ statusOptions?.find(i=>i.value == row.status)?.label }}</el-tag>
                   </template>
@@ -92,7 +92,8 @@ export default {
   },
   computed: {
     userRole() {
-      return this.$store.getters.getUser.userRole;
+      const user = this.$store.getters.getUser;
+      return user ? user.userRole : null;
     },
   },
   mounted() {

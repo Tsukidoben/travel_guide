@@ -65,6 +65,22 @@
             <i class="el-icon-edit-outline"></i>
             攻略管理
           </el-menu-item>
+          <el-menu-item v-if="userRole == '1'" index="foodCategory" @click="toMenu('foodCategory')">
+            <i class="el-icon-s-grid"></i>
+            小吃分类管理
+          </el-menu-item>
+          <el-menu-item v-if="userRole == '1'" index="foodInfo" @click="toMenu('foodInfo')">
+            <i class="el-icon-food"></i>
+            小吃信息管理
+          </el-menu-item>
+          <el-menu-item v-if="userRole == '1'" index="foodShop" @click="toMenu('foodShop')">
+            <i class="el-icon-office-building"></i>
+            小吃店铺管理
+          </el-menu-item>
+          <el-menu-item v-if="userRole == '1'" index="foodComment" @click="toMenu('foodComment')">
+            <i class="el-icon-chat-dot-round"></i>
+            小吃评论管理
+          </el-menu-item>
           <el-menu-item v-if="userRole == '3'" index="hotelInfo" @click="toMenu('hotelInfo')">
             <i class="el-icon-s-home"></i>
             酒店管理
@@ -122,7 +138,8 @@ export default {
       }
     },
     userRole() {
-      return this.$store.getters.getUser.userRole;
+      const user = this.$store.getters.getUser;
+      return user ? user.userRole : null;
     },
     config() {
       return config
@@ -131,7 +148,7 @@ export default {
       return this.$route;
     },
     userInfo() {
-      return this.$store.getters.getUser;
+      return this.$store.getters.getUser || {};
     }
   },
   methods:{

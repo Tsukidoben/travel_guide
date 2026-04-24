@@ -44,6 +44,35 @@
             </el-row>
           </div>
 
+          <!-- 热门小吃推荐模块 -->
+          <div class="card-panel section-panel">
+            <div class="panel-header">
+              <div class="header-left">
+                <i class="el-icon-food"></i>
+                <span class="title-text">热门小吃推荐</span>
+              </div>
+              <el-button type="text" class="more-btn" @click="$router.push({name:'foodList'})">更多小吃 <i class="el-icon-arrow-right"></i></el-button>
+            </div>
+            <el-row :gutter="20">
+              <el-col :span="4.8" v-for="(food, index) in foodList" :key="index" class="custom-col-5">
+                <el-card class="travel-card food-card" :body-style="{ padding: '0px' }" shadow="hover" @click.native="$router.push({name:'foodDetail',query:{id:food.id}})">
+                  <div class="image-wrapper">
+                    <img :src="getPicUrlByJson(food.foodPic,0)" class="card-image">
+                    <div class="recommend-badge" v-if="food.tags">{{ getFirstTag(food.tags) }}</div>
+                  </div>
+                  <div class="content">
+                    <h3 class="name one-line">{{ food.foodName }}</h3>
+                    <p class="desc two-line">{{ food.shopName || '特色小吃' }}</p>
+                    <div class="footer">
+                      <span class="price-text">¥{{ food.avgPrice }}</span>
+                      <span class="score"><i class="el-icon-star-on"></i> {{ food.score }}</span>
+                    </div>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+          </div>
+
           <div class="card-panel section-panel">
             <div class="panel-header">
               <div class="header-left">
@@ -103,7 +132,8 @@ export default {
       bannerList: [],
       guideList: [],
       spotList: [],
-      hotelList: []
+      hotelList: [],
+      foodList: []
     };
   },
   mounted() {
@@ -111,6 +141,7 @@ export default {
     this.getTripStrategy()
     this.getAttraction()
     this.geThotelInfo()
+    this.getRecommendFood()
   },
   methods:{
     geThotelInfo(){
@@ -121,6 +152,50 @@ export default {
           this.hotelList = res.data
         }
       })
+    },
+    getRecommendFood(){
+      request({
+        url: config.backHost + "/api/food/info/listPage",
+        method: 'POST',
+        data: {
+          params: {
+            isRecommend: 1,
+            status: 1
+          },
+          pageBean: {
+            page: 1,
+            pageSize: 6
+          }
+        }
+      }).then(res => {
+        if (res.code == 200) {
+          // 处理不同的返回数据格式
+          let dataList = [];
+          if (Array.isArray(res.data)) {
+            dataList = res.data;
+          } else if (res.data && res.data.records) {
+            dataList = res.data.records;
+          } else if (res.data && res.data.list) {
+            dataList = res.data.list;
+          }
+          
+          // 取前6个推荐小吃
+          this.foodList = dataList.slice(0, 6).map(item => ({
+            id: item.id,
+            foodName: item.name,
+            foodPic: item.images,
+            shopName: item.shopName,
+            avgPrice: item.avgPrice,
+            score: item.score,
+            tags: item.tags
+          }));
+        }
+      })
+    },
+    getFirstTag(tags) {
+      if (!tags) return '';
+      const tagArray = tags.split(',').filter(t => t.trim());
+      return tagArray.length > 0 ? tagArray[0].trim() : '';
     },
     getAttraction(){
       request({
@@ -274,6 +349,18 @@ $text-muted: #999;
       background: $primary-color; color: white;
       padding: 2px 8px; border-radius: 4px; font-size: 11px;
       line-height: 16px;
+    }
+    .recommend-badge {
+      position: absolute; top: 10px; right: 10px;
+      background: linear-gradient(135deg, #ff6b35 0%, #ffa726 100%);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 16px;
+      box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+      white-space: nowrap;
     }
   }
 

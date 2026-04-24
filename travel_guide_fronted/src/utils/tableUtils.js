@@ -41,13 +41,14 @@ export default {
                 for (let i = 0; i < list.length; i++) {
                     ids.push(list[i].id)
                 }
-                this.$confirm('确认删除？删除后不可回退', '温馨提示', {
+                this.$confirm('确认删除?删除后不可回退', '温馨提示', {
                     confirmButtonText: '确定',
                     cancelButtonText: '取消',
                     type: 'warning'
                 }).then(() => {
                     request({
                         url: config.backHost + delUrl,
+                        method: 'POST',
                         data: {ids: ids}
                     }).then(res => {
                         if (res.code == 200) {
@@ -71,13 +72,14 @@ export default {
             }
         },
         delById(row, delUrl) {
-            this.$confirm('确认删除？删除后不可回退', '温馨提示', {
+            this.$confirm('确认删除?删除后不可回退', '温馨提示', {
                 confirmButtonText: '确定',
                 cancelButtonText: '取消',
                 type: 'warning'
             }).then(() => {
                 request({
-                    url: config.backHost + delUrl + row.id
+                    url: config.backHost + delUrl + row.id,
+                    method: 'POST'
                 }).then(res => {
                     if (res.code == 200) {
                         this.$message({

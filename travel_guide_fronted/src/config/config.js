@@ -23,6 +23,16 @@ const config = {
     msgNumFlag:true,
     routesWhiteList: [
         'login',
+        'frontIndex',
+        'home',
+        'attractionList',
+        'attractionDetail',
+        'foodList',
+        'foodDetail',
+        'strategyPlaza',
+        'strategyPlazaDetail',
+        'hotelInfoFront',
+        'hotelInfoDetail',
     ],
 }
 

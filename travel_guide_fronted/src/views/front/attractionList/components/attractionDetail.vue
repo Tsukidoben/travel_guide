@@ -200,7 +200,6 @@ export default {
       activeName:'first',
       classify:[],
       comments:[],
-      currentUserId: this.$store.getters.getUser.id,
       commentForm: {
         attractionId: this.$route.query.id,
         commentDetail: "",
@@ -210,6 +209,10 @@ export default {
     };
   },
   computed: {
+    currentUserId() {
+      const user = this.$store.getters.getUser;
+      return user ? user.id : null;
+    },
     visitorSummary() {
       const active = this.visitorTypes.filter(v => v.count > 0);
       return active.map(v => `${v.label} x ${v.count}`).join(', ');

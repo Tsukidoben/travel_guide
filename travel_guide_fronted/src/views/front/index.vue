@@ -129,6 +129,7 @@ export default {
         { name: '首页', path: '/front/home' },
         { name: '景点查询', path: '/front/attractionList' },
         { name: '酒店列表', path: '/front/hotelInfoFront' },
+        { name: '特色小吃', path: '/front/foodList' },
         {
           name: '内容管理',
           path: 'content',
@@ -256,8 +257,7 @@ export default {
             localStorage.removeItem("token");
             this.userInfo = {}
 
-            this.$router.push({name: 'home'})
-            window.location.reload();
+            this.$router.push({name: 'login'})
           } else {
             this.$message.error(res.msg);
           }

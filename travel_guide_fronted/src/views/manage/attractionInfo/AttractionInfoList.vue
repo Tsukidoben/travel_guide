@@ -19,18 +19,18 @@
             <el-table-column type="index" width="55" label="序号" />
             <el-table-column prop="attractionName" label="景点名称"/>
             <el-table-column prop="attractionPic" width="100" label="景点图片">
-              <template #default="{row,$index}">
+              <template #default="{row}">
                 <el-image style="width: 60px;height: 60px" :src="getPicUrlByJson(row.attractionPic,0)" :preview-src-list="[getPicUrlByJson(row.attractionPic,0)]"></el-image>
               </template>
             </el-table-column>
             <el-table-column prop="typeId" min-width="150" label="景点分类">
-              <template #default="{row,$index}">
+              <template #default="{row}">
                 <span>{{ typeIdOptions?.find(i=>i.id == row.typeId)?.typeName }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="attractionDesc" min-width="150" label="景点简介"/>
             <el-table-column prop="attractionDetail" min-width="150" label="景点描述">
-              <template #default="{row,$index}">
+              <template #default="{row}">
                 <span class="two-line">{{ getHtmlPlainText(row.attractionDetail) }}</span>
               </template>
             </el-table-column>
@@ -84,7 +84,8 @@ export default {
   },
   computed: {
     userRole() {
-      return this.$store.getters.getUser.userRole;
+      const user = this.$store.getters.getUser;
+      return user ? user.userRole : null;
     },
   },
   mounted() {

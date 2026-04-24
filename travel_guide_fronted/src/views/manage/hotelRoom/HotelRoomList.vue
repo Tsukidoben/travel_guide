@@ -25,12 +25,12 @@
                 <el-table-column type="index" width="55" label="序号" />
                 <el-table-column prop="roomName" label="房间名称" min-width="120"/>
                 <el-table-column prop="htoelPic" width="100" label="房间图片">
-                  <template #default="{row,$index}">
+                  <template #default="{row}">
                     <el-image style="width: 60px;height: 60px" :src="getPicUrlByJson(row.roomPic,0)" :preview-src-list="[getPicUrlByJson(row.roomPic,0)]"></el-image>
                   </template>
                 </el-table-column>
                 <el-table-column prop="hotelId" label="所属酒店" min-width="120">
-                  <template #default="{row,$index}">
+                  <template #default="{row}">
                     <span>{{ hotelIdOptions?.find(i=>i.id == row.hotelId)?.htoelName }}</span>
                   </template>
                 </el-table-column>
@@ -93,7 +93,8 @@ export default {
   },
   computed: {
     userRole() {
-      return this.$store.getters.getUser.userRole;
+      const user = this.$store.getters.getUser;
+      return user ? user.userRole : null;
     },
   },
   mounted() {

@@ -2,33 +2,68 @@
   <div class="my-favorites-container">
     <div class="favorite-header">
       <h1 class="title">我的收藏</h1>
-      <p class="subtitle">管理您心仪的景点和目的地</p>
+      <p class="subtitle">管理您心仪的景点、小吃和目的地</p>
     </div>
 
-    <div class="activity-grid" v-if="favoriteList.length>0">
-      <div v-for="item in favoriteList" :key="item.id" @click="goDetail(item.attractionId)" class="activity-card">
-        <div class="wishlist-heart" @click.stop="handleCancelCollect(item.id)">
-          <i class="el-icon-delete"></i>
+    <!-- 标签切换 -->
+    <el-tabs v-model="activeTab" @tab-click="handleTabClick" class="collect-tabs">
+      <el-tab-pane label="景点收藏" name="attraction">
+        <div class="activity-grid" v-if="attractionList.length>0">
+          <div v-for="item in attractionList" :key="item.id" @click="goAttractionDetail(item.attractionId)" class="activity-card">
+            <div class="wishlist-heart" @click.stop="handleCancelAttractionCollect(item.id)">
+              <i class="el-icon-delete"></i>
+            </div>
+            <div class="card-image" :class="'pic-count-' + JSON.parse(item.attractionPic).length">
+              <img
+                  :src="getPicUrlByJson(item.attractionPic,0)" alt="activity">
+            </div>
+            <div class="card-body">
+              <h3 class="card-title">{{ item.attractionName }}</h3>
+              <div class="card-info two-line">{{ item.attractionDesc }}</div>
+            </div>
+          </div>
         </div>
-        <div class="card-image" :class="'pic-count-' + JSON.parse(item.attractionPic).length">
-          <img
-              :src="getPicUrlByJson(item.attractionPic,0)" alt="activity">
-        </div>
-        <div class="card-body">
-          <h3 class="card-title">{{ item.attractionName }}</h3>
-          <div class="card-info two-line">{{ item.attractionDesc }}</div>
-        </div>
-      </div>
-    </div>
 
-    <div v-else class="empty-container">
-      <div class="empty-icon">📂</div>
-      <h3>您的收藏夹空空如也</h3>
-      <p>去发现一些有趣的景点并收藏它们吧！</p>
-      <el-button type="primary" round @click="$router.push('/front/attractionList')">
-        浏览景点
-      </el-button>
-    </div>
+        <div v-else class="empty-container">
+          <div class="empty-icon">📂</div>
+          <h3>您的景点收藏夹空空如也</h3>
+          <p>去发现一些有趣的景点并收藏它们吧！</p>
+          <el-button type="primary" round @click="$router.push('/front/attractionList')">
+            浏览景点
+          </el-button>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="小吃收藏" name="food">
+        <div class="activity-grid" v-if="foodList.length>0">
+          <div v-for="item in foodList" :key="item.id" @click="goFoodDetail(item.foodId)" class="activity-card">
+            <div class="wishlist-heart" @click.stop="handleCancelFoodCollect(item.id)">
+              <i class="el-icon-delete"></i>
+            </div>
+            <div class="card-image">
+              <img :src="getPicUrlByJson(item.foodPic,0)" alt="food">
+            </div>
+            <div class="card-body">
+              <h3 class="card-title">{{ item.foodName }}</h3>
+              <div class="card-info two-line">{{ item.shopName }}</div>
+              <div class="card-price">
+                <span class="price-label">人均</span>
+                <span class="new-price">¥{{ item.avgPrice }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="empty-container">
+          <div class="empty-icon">🍜</div>
+          <h3>您的小吃收藏夹空空如也</h3>
+          <p>去发现一些美味的小吃并收藏它们吧！</p>
+          <el-button type="primary" round @click="$router.push('/front/foodList')">
+            浏览小吃
+          </el-button>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -39,25 +74,120 @@ import common from "@/utils/common";
 
 export default {
   mixins: [common],
+  computed: {
+    userInfo() {
+      return this.$store.getters.getUser || {};
+    }
+  },
   data() {
     return {
-      favoriteList: []
+      activeTab: 'attraction',
+      attractionList: [],
+      foodList: []
     };
   },
   mounted() {
-    this.getMyCollect();
+    this.getAttractionCollect();
+    this.getFoodCollect();
   },
   methods: {
-    getMyCollect() {
+    handleTabClick(tab) {
+      // 切换标签时的逻辑
+    },
+    
+    getAttractionCollect() {
       request({
         url: config.backHost + "/attractionCollection/myCollect",
       }).then(res => {
         if (res.code === 200) {
-          this.favoriteList = res.data;
+          this.attractionList = res.data;
         }
       });
     },
-    handleCancelCollect(attractionId) {
+    
+    getFoodCollect() {
+      if (!this.userInfo || !this.userInfo.id) {
+        console.log('用户未登录，无法获取收藏列表');
+        return;
+      }
+      
+      request({
+        url: config.backHost + "/api/food/favorite/listPage",
+        method: 'POST',
+        data: {
+          pageBean: {
+            page: 1,
+            pageSize: 100
+          }
+        }
+      }).then(res => {
+        if (res.code === 200) {
+          const data = res.data;
+          
+          // 兼容两种返回格式：
+          // 1. 分页格式：{ records: [...], total: X }
+          // 2. 直接数组格式：[{...}, {...}]
+          let records = [];
+          if (Array.isArray(data)) {
+            // 如果直接是数组
+            records = data;
+          } else if (data && data.records) {
+            // 如果是分页对象
+            records = data.records;
+          }
+          
+          // 先构建基础列表
+          this.foodList = records.map(item => ({
+            id: item.id,
+            foodId: item.foodId,
+            foodName: item.foodName,
+            foodPic: item.foodImages || item.foodPic,
+            shopName: item.shopName,
+            avgPrice: item.avgPrice || item.price || 0
+          }));
+          
+          // 为每个小吃获取详情以补充价格信息
+          this.fetchFoodDetails();
+        }
+      }).catch(err => {
+        this.$message.error('获取小吃收藏失败');
+      });
+    },
+    
+    // 获取小吃详情以补充价格信息
+    fetchFoodDetails() {
+      if (this.foodList.length === 0) return;
+      
+      // 并发请求所有小吃的详情
+      const promises = this.foodList.map(item => {
+        return request({
+          url: config.backHost + `/api/food/info/detail/${item.foodId}`,
+          method: 'POST'
+        }).then(res => {
+          if (res.code === 200 && res.data) {
+            return {
+              foodId: item.foodId,
+              avgPrice: res.data.avgPrice || 0
+            };
+          }
+          return { foodId: item.foodId, avgPrice: 0 };
+        }).catch(() => {
+          return { foodId: item.foodId, avgPrice: 0 };
+        });
+      });
+      
+      Promise.all(promises).then(results => {
+        // 更新价格信息
+        results.forEach(result => {
+          const food = this.foodList.find(f => f.foodId === result.foodId);
+          if (food) {
+            food.avgPrice = result.avgPrice;
+          }
+        });
+      });
+    },
+    
+    handleCancelAttractionCollect(attractionId) {
       this.$confirm('确定要将此景点从收藏中移除吗？', '取消收藏', {
         confirmButtonText: '确定移除',
         cancelButtonText: '再想想',
@@ -69,13 +199,44 @@ export default {
         }).then(res => {
           if (res.code === 200) {
             this.$message.success("已移除收藏");
-            this.getMyCollect();
+            this.getAttractionCollect();
           }
         });
       }).catch(() => {});
     },
-    goDetail(id) {
+    
+    handleCancelFoodCollect(favoriteId) {
+      this.$confirm('确定要将此小吃从收藏中移除吗？', '取消收藏', {
+        confirmButtonText: '确定移除',
+        cancelButtonText: '再想想',
+        type: 'warning',
+        roundButton: true
+      }).then(() => {
+        // 先获取该收藏对应的 foodId
+        const favorite = this.foodList.find(item => item.id === favoriteId);
+        if (!favorite) return;
+        
+        request({
+          url: config.backHost + "/api/food/favorite",
+          method: 'POST',
+          data: {
+            foodId: favorite.foodId
+          }
+        }).then(res => {
+          if (res.code === 200) {
+            this.$message.success("已移除收藏");
+            this.getFoodCollect();
+          }
+        });
+      }).catch(() => {});
+    },
+    
+    goAttractionDetail(id) {
       this.$router.push({name:'attractionDetail',query:{id:id}});
+    },
+    
+    goFoodDetail(foodId) {
+      this.$router.push({name:'foodDetail', query:{id:foodId}});
     }
   }
 };
@@ -109,6 +270,16 @@ export default {
       }
     }
     .subtitle { color: #636872; margin-top: 8px; }
+  }
+  
+  ::v-deep .collect-tabs {
+    .el-tabs__header {
+      margin-bottom: 30px;
+    }
+    .el-tabs__item {
+      font-size: 16px;
+      font-weight: 500;
+    }
   }
 }
 
@@ -239,6 +410,21 @@ export default {
   margin-bottom: 8px;
   line-height: 16px;
   height: 32px;
+}
+
+.card-price {
+  text-align: right;
+}
+
+.price-label {
+  font-size: 11px;
+  color: #636872;
+}
+
+.new-price {
+  color: #d92128;
+  font-size: 18px;
+  font-weight: bold;
 }
 
 @media (max-width: 1100px) { .activity-grid { grid-template-columns: repeat(3, 1fr); } }

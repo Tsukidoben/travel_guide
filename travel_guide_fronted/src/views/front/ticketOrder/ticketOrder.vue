@@ -97,7 +97,10 @@ export default {
     }
   },
   computed: {
-    userRole() { return this.$store.getters.getUser.userRole; },
+    userRole() { 
+      const user = this.$store.getters.getUser;
+      return user ? user.userRole : null;
+    },
   },
   mounted() {
     this.initData();

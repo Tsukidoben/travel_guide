@@ -18,20 +18,20 @@
             <el-table-column type="selection" width="55" />
             <el-table-column type="index" width="55" label="序号" />
             <el-table-column prop="headPicUrl" width="100" label="头像">
-              <template #default="{row,$index}">
+              <template #default="{row}">
                 <el-image style="width: 60px;height: 60px" :src="getPicUrlByJson(row.headPicUrl,0)" :preview-src-list="[getPicUrlByJson(row.headPicUrl,0)]"></el-image>
               </template>
             </el-table-column>
             <el-table-column prop="userName" min-width="150" label="用户名"/>
             <el-table-column prop="userAccount" label="用户账号"/>
             <el-table-column prop="userSex" label="性别">
-              <template #default="{row,$index}">
+              <template #default="{row}">
                 <span>{{ userSexOptions?.find(i=>i.value == row.userSex)?.label }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="userPhone"  min-width="150" label="联系电话"/>
             <el-table-column prop="userRole" label="角色">
-              <template #default="{row,$index}">
+              <template #default="{row}">
                 <span>{{ userRoleOptions?.find(i=>i.value == row.userRole)?.label }}</span>
               </template>
             </el-table-column>
@@ -89,7 +89,8 @@ export default {
   },
   computed: {
     userRole() {
-      return this.$store.getters.getUser.userRole;
+      const user = this.$store.getters.getUser;
+      return user ? user.userRole : null;
     },
   },
   mounted() {

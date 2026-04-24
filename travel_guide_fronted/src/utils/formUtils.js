@@ -62,6 +62,7 @@ export default {
             }
             request({
                 url: config.backHost + url,
+                method: 'POST',
                 data: this.formData,
             }).then((res)=>{
                 if(res.code == 200){
