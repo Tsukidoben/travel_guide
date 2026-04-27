@@ -116,6 +116,154 @@
                       <div class="section-label">详细介绍</div>
                       <div v-html="detail.attractionDetail"></div>
                     </div>
+
+                    <!-- 顺路行程推荐模块 -->
+                    <div class="route-recommend-section">
+                      <div class="section-label">顺路行程推荐</div>
+                      
+                      <!-- 加载状态 -->
+                      <div v-if="routeLoading" class="loading-container">
+                        <i class="el-icon-loading"></i>
+                        <span>加载中...</span>
+                      </div>
+
+                      <!-- 无数据提示 -->
+                      <el-empty v-else-if="!nextAttractions || nextAttractions.length === 0" description="暂无推荐内容" :image-size="80"></el-empty>
+
+                      <!-- 推荐下一站景点 -->
+                      <div v-else class="recommend-attractions">
+                        <div 
+                          v-for="item in nextAttractions" 
+                          :key="item.id" 
+                          class="attraction-card"
+                          :class="{ 'active': selectedAttractionId === item.id }"
+                          @click="selectAttraction(item)"
+                        >
+                          <div class="card-image">
+                            <el-image 
+                              v-if="item.attractionPic"
+                              :src="getPicUrlByJson(item.attractionPic, 0)" 
+                              fit="cover"
+                              style="width: 100%; height: 100%;"
+                            ></el-image>
+                            <div v-else class="image-placeholder">
+                              <i class="el-icon-picture-outline"></i>
+                              <span>暂无图片</span>
+                            </div>
+                          </div>
+                          <div class="card-info">
+                            <div class="attraction-name">{{ item.attractionName }}</div>
+                            <div class="attraction-location">
+                              <i class="el-icon-location-outline"></i>
+                              {{ item.attractionPlace }}
+                            </div>
+                            <div class="attraction-distance">
+                              <span class="distance-label">距离</span>
+                              <span class="distance-value">{{ item.distance }}km</span>
+                            </div>
+                            <div class="attraction-duration">
+                              <span class="duration-label">驾车时长</span>
+                              <span class="duration-value">{{ item.driveTime }}分钟</span>
+                            </div>
+                            <div class="attraction-playtime" v-if="item.playHour">
+                              <span class="playtime-label">游玩时长</span>
+                              <span class="playtime-value">{{ formatPlayTime(item.playHour) }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 交通方式展示区（选中景点后显示） -->
+                      <div v-if="selectedAttractionId && trafficInfo" class="traffic-section">
+                        <div class="traffic-tabs">
+                          <div 
+                            v-for="type in trafficTypes" 
+                            :key="type.value"
+                            class="tab-item"
+                            :class="{ 'active': currentTrafficType === type.value }"
+                            @click="switchTrafficType(type.value)"
+                          >
+                            {{ type.label }}
+                          </div>
+                        </div>
+
+                        <div v-if="trafficLoading" class="loading-container">
+                          <i class="el-icon-loading"></i>
+                          <span>加载中...</span>
+                        </div>
+
+                        <div v-else-if="currentTrafficData" class="traffic-info">
+                          <div class="info-row">
+                            <span class="label">里程：</span>
+                            <span class="value">{{ currentTrafficData.distance }}km</span>
+                          </div>
+                          <div class="info-row">
+                            <span class="label">耗时：</span>
+                            <span class="value">{{ currentTrafficData.duration }}</span>
+                          </div>
+                          <div class="info-row">
+                            <span class="label">预估费用：</span>
+                            <span class="value">￥{{ currentTrafficData.cost }}</span>
+                          </div>
+                          <div class="info-row route-desc">
+                            <span class="label">路线说明：</span>
+                            <span class="value">{{ currentTrafficData.routeDescription }}</span>
+                          </div>
+                        </div>
+
+                        <el-empty v-else description="暂无交通信息" :image-size="60"></el-empty>
+                      </div>
+
+                      <!-- 沿途特色小吃推荐（选中景点后显示） -->
+                      <div v-if="selectedAttractionId && foodShops" class="food-section">
+                        <div class="section-subtitle">沿途特色小吃</div>
+                        
+                        <div v-if="foodLoading" class="loading-container">
+                          <i class="el-icon-loading"></i>
+                          <span>加载中...</span>
+                        </div>
+
+                        <div v-else-if="foodShops.length > 0" class="food-list">
+                          <div 
+                            v-for="shop in foodShops" 
+                            :key="shop.id" 
+                            class="food-card"
+                            @click="goToFoodDetail(shop.foodId)"
+                          >
+                            <div class="food-image">
+                              <el-image 
+                                v-if="shop.images"
+                                :src="getPicUrlByJson(shop.images, 0)" 
+                                fit="cover"
+                                style="width: 100%; height: 100%;"
+                              ></el-image>
+                              <div v-else class="image-placeholder-small">
+                                <i class="el-icon-food"></i>
+                              </div>
+                            </div>
+                            <div class="food-info">
+                              <div class="shop-name">{{ shop.name }}</div>
+                              <div class="shop-address">
+                                <i class="el-icon-location-outline"></i>
+                                {{ shop.address }}
+                              </div>
+                              <div class="shop-meta">
+                                <span class="meta-item">
+                                  <span class="meta-label">人均：</span>
+                                  <span class="meta-value">￥{{ shop.avgPrice }}</span>
+                                </span>
+                                <span class="meta-item">
+                                  <span class="meta-label">距路线：</span>
+                                  <span class="meta-value">{{ shop.distance }}km</span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <el-empty v-else description="暂无推荐小吃" :image-size="60"></el-empty>
+                      </div>
+                    </div>
                   </div>
                 </el-tab-pane>
                 <el-tab-pane label="景点评价" name="second">
@@ -183,6 +331,7 @@ import request from "@/utils/request";
 import config from "@/config/config";
 import common from "@/utils/common";
 import uploadImageMore from "@/components/UploadImageMore.vue";
+import { getNextAttraction, getTrafficInfo, getNearFoodShop } from "@/api/routeRecommend";
 
 export default {
   components: {uploadImageMore},
@@ -206,6 +355,20 @@ export default {
         pictureUrl: "[]"
       },
       submitting: false,
+      // 路线推荐相关数据
+      nextAttractions: [],
+      selectedAttractionId: null,
+      trafficInfo: null,
+      foodShops: [],
+      routeLoading: false,
+      trafficLoading: false,
+      foodLoading: false,
+      currentTrafficType: 'drive',
+      trafficTypes: [
+        { label: '自驾', value: 'drive' },
+        { label: '公交', value: 'bus' },
+        { label: '打车', value: 'taxi' }
+      ]
     };
   },
   computed: {
@@ -216,11 +379,32 @@ export default {
     visitorSummary() {
       const active = this.visitorTypes.filter(v => v.count > 0);
       return active.map(v => `${v.label} x ${v.count}`).join(', ');
+    },
+    // 当前交通方式的数据
+    currentTrafficData() {
+      if (!this.trafficInfo) {
+        return null;
+      }
+      
+      // 获取当前交通方式的数据（drive/bus/taxi）
+      const trafficTypeData = this.trafficInfo[this.currentTrafficType];
+      if (!trafficTypeData) {
+        return null;
+      }
+      
+      // 适配新的数据结构
+      return {
+        distance: this.trafficInfo.distance,
+        duration: `${trafficTypeData.time}分钟`,
+        cost: trafficTypeData.cost,
+        routeDescription: trafficTypeData.description
+      };
     }
   },
   mounted() {
     this.getDetail();
     this.getComment()
+    this.loadRouteRecommend();
     this.$nextTick(() => {
       const container = document.querySelector('.content');
       if (container) {
@@ -358,6 +542,108 @@ export default {
           document.forms[0].submit();
         });
       })
+    },
+    // 加载路线推荐
+    async loadRouteRecommend() {
+      const attractionId = this.$route.query.id;
+      if (!attractionId) return;
+      
+      this.routeLoading = true;
+      try {
+        const res = await getNextAttraction(attractionId);
+        if (res.code === 200) {
+          this.nextAttractions = res.data || [];
+        }
+      } catch (error) {
+        console.error('加载路线推荐失败:', error);
+        this.$message.error('加载路线推荐失败');
+      } finally {
+        this.routeLoading = false;
+      }
+    },
+    // 选择景点
+    async selectAttraction(item) {
+      this.selectedAttractionId = item.id;
+      
+      // 加载交通信息和小吃信息
+      await Promise.all([
+        this.loadTrafficInfo(item),
+        this.loadFoodShops(item)
+      ]);
+    },
+    // 加载交通信息
+    async loadTrafficInfo(item) {
+      this.trafficLoading = true;
+      try {
+        const params = {
+          fromAttractionId: this.$route.query.id,
+          toAttractionId: item.id
+        };
+        
+        const res = await getTrafficInfo(params);
+        
+        if (res.code === 200 && res.data && Object.keys(res.data).length > 0) {
+          const data = res.data;
+          this.trafficInfo = {
+            distance: data.distance || 0,
+            drive: data.drive || null,
+            bus: data.bus || null,
+            taxi: data.taxi || null
+          };
+        } else {
+          this.trafficInfo = null;
+          this.$message.warning('该路线暂无交通信息');
+        }
+      } catch (error) {
+        console.error('加载交通信息失败:', error);
+        this.$message.error('加载交通信息失败');
+        this.trafficInfo = null;
+      } finally {
+        this.trafficLoading = false;
+      }
+    },
+    // 加载沿途小吃
+    async loadFoodShops(item) {
+      this.foodLoading = true;
+      try {
+        const params = {
+          fromAttractionId: this.$route.query.id,
+          toAttractionId: item.id
+        };
+        const res = await getNearFoodShop(params);
+        if (res.code === 200) {
+          this.foodShops = res.data || [];
+        }
+      } catch (error) {
+        console.error('加载小吃信息失败:', error);
+        this.foodShops = [];
+      } finally {
+        this.foodLoading = false;
+      }
+    },
+    // 切换交通方式
+    switchTrafficType(type) {
+      this.currentTrafficType = type;
+    },
+    // 格式化游玩时间（分钟转小时）
+    formatPlayTime(minutes) {
+      if (!minutes) return '';
+      if (minutes < 60) {
+        return `${minutes}分钟`;
+      }
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      if (mins === 0) {
+        return `${hours}小时`;
+      }
+      return `${hours}小时${mins}分钟`;
+    },
+    // 跳转到小吃详情页
+    goToFoodDetail(foodId) {
+      this.$router.push({
+        name: 'foodDetail',
+        query: { id: foodId }
+      });
     }
   }
 };
@@ -658,6 +944,309 @@ $dark-text: #1a2b49;
   }
   .act-btn.del:hover {
     color: #FF8A45 !important;
+  }
+}
+
+// 路线推荐模块样式
+.route-recommend-section {
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 1px solid #f0f0f0;
+
+  .loading-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+    color: #999;
+    i {
+      font-size: 24px;
+      margin-right: 10px;
+    }
+  }
+
+  // 推荐景点卡片
+  .recommend-attractions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 30px;
+
+    .attraction-card {
+      background: #fff;
+      border: 2px solid #e8e8e8;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:hover {
+        border-color: $theme-color;
+        box-shadow: 0 4px 12px rgba(255, 138, 69, 0.15);
+        transform: translateY(-2px);
+      }
+
+      &.active {
+        border-color: $theme-color;
+        box-shadow: 0 4px 16px rgba(255, 138, 69, 0.25);
+      }
+
+      .card-image {
+        width: 100%;
+        height: 160px;
+        overflow: hidden;
+        background: #f5f7fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .image-placeholder {
+          text-align: center;
+          color: #ccc;
+          i {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 8px;
+          }
+          span {
+            font-size: 12px;
+          }
+        }
+      }
+
+      .card-info {
+        padding: 15px;
+
+        .attraction-name {
+          font-size: 16px;
+          font-weight: bold;
+          color: #333;
+          margin-bottom: 8px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .attraction-location {
+          font-size: 13px;
+          color: #666;
+          margin-bottom: 10px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          i {
+            margin-right: 4px;
+            color: $theme-color;
+          }
+        }
+
+        .attraction-distance,
+        .attraction-duration,
+        .attraction-playtime {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 6px 0;
+          font-size: 13px;
+          border-top: 1px dashed #f0f0f0;
+
+          .distance-label,
+          .duration-label,
+          .playtime-label {
+            color: #999;
+          }
+
+          .distance-value,
+          .duration-value,
+          .playtime-value {
+            color: $theme-color;
+            font-weight: bold;
+          }
+        }
+      }
+    }
+  }
+
+  // 交通信息区域
+  .traffic-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f9fafb;
+    border-radius: 12px;
+
+    .traffic-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+
+      .tab-item {
+        flex: 1;
+        padding: 10px;
+        text-align: center;
+        background: #fff;
+        border: 1px solid #e8e8e8;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 14px;
+        color: #666;
+
+        &:hover {
+          border-color: $theme-color;
+          color: $theme-color;
+        }
+
+        &.active {
+          background: $theme-color;
+          border-color: $theme-color;
+          color: #fff;
+          font-weight: bold;
+        }
+      }
+    }
+
+    .traffic-info {
+      .info-row {
+        display: flex;
+        padding: 12px 0;
+        border-bottom: 1px dashed #e8e8e8;
+        font-size: 14px;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .label {
+          color: #666;
+          min-width: 90px;
+          flex-shrink: 0;
+        }
+
+        .value {
+          color: #333;
+          flex: 1;
+        }
+
+        &.route-desc {
+          .value {
+            line-height: 1.6;
+          }
+        }
+      }
+    }
+  }
+
+  // 小吃推荐区域
+  .food-section {
+    margin-top: 30px;
+
+    .section-subtitle {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 20px;
+      padding-left: 14px;
+      position: relative;
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 18px;
+        background: $theme-color;
+        border-radius: 2px;
+      }
+    }
+
+    .food-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+
+      .food-card {
+        background: #fff;
+        border: 1px solid #e8e8e8;
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+
+        &:hover {
+          border-color: $theme-color;
+          box-shadow: 0 4px 12px rgba(255, 138, 69, 0.15);
+          transform: translateY(-2px);
+        }
+
+        .food-image {
+          width: 120px;
+          height: 120px;
+          flex-shrink: 0;
+          background: #f5f7fa;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          .image-placeholder-small {
+            color: #ccc;
+            i {
+              font-size: 32px;
+            }
+          }
+        }
+
+        .food-info {
+          flex: 1;
+          padding: 12px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+
+          .shop-name {
+            font-size: 15px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .shop-address {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            i {
+              margin-right: 4px;
+              color: $theme-color;
+            }
+          }
+
+          .shop-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+
+            .meta-item {
+              .meta-label {
+                color: #999;
+              }
+
+              .meta-value {
+                color: $theme-color;
+                font-weight: bold;
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 </style>

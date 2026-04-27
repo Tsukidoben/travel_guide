@@ -42,6 +42,18 @@ public class FoodShop extends Model<FoodShop> {
     private String address;
 
     /**
+     * 经度
+     */
+    @TableField(value = "longitude")
+    private java.math.BigDecimal longitude;
+
+    /**
+     * 纬度
+     */
+    @TableField(value = "latitude")
+    private java.math.BigDecimal latitude;
+
+    /**
      * 联系电话
      */
     @TableField(value = "phone")

@@ -67,6 +67,24 @@ public class AttractionInfo  extends Model<AttractionInfo> {
     private String attractionPlace;
 
     /**
+     * 经度
+     */
+    @TableField(value = "longitude")
+    private java.math.BigDecimal longitude;
+
+    /**
+     * 纬度
+     */
+    @TableField(value = "latitude")
+    private java.math.BigDecimal latitude;
+
+    /**
+     * 建议游玩时长(分钟)
+     */
+    @TableField(value = "play_hour")
+    private Integer playHour;
+
+    /**
      * 创建人
      */
     @TableField(value = "creator", fill = FieldFill.INSERT)
