@@ -94,3 +94,7 @@ alipay:
 
 auth:
   code: bb1d57a6-da4f-4052-b3f5-398b9c629f91
+
+# 高德地图配置
+amap:
+  key: 8fda05360a3952f57930da3919c62df0 # 请替换为实际的高德地图Web服务API Key

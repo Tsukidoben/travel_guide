@@ -11,7 +11,13 @@
             <el-input type="text" v-model="formData.name" style="width: 100%"  placeholder="请输入店铺名称"/>
           </el-form-item>
           <el-form-item prop="address" label="店铺地址">
-            <el-input type="textarea" :rows="2" v-model="formData.address" style="width: 100%"  placeholder="请输入店铺地址"/>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+              <el-input type="textarea" :rows="2" v-model="formData.address" style="flex: 1" placeholder="请输入店铺地址" @blur="handleGetCoordinates('shop')" />
+              <el-button type="primary" size="small" :loading="geoLoading" @click="handleGetCoordinates('shop')" style="flex-shrink: 0;">获取经纬度</el-button>
+            </div>
+            <!-- 隐藏字段存储经纬度 -->
+            <el-input type="hidden" v-model="formData.longitude" />
+            <el-input type="hidden" v-model="formData.latitude" />
           </el-form-item>
           <el-form-item prop="phone" label="联系电话">
             <el-input type="text" v-model="formData.phone" style="width: 100%"  placeholder="请输入联系电话"/>
@@ -59,11 +65,14 @@ export default {
         address: '',
         phone: '',
         avgPrice: 0,
-        businessHours: ''
+        businessHours: '',
+        longitude: '',
+        latitude: ''
       },
       addUrl: '/api/food/shop/saveOrUpdate',
       editUrl: '/api/food/shop/saveOrUpdate',
       newUploadImgKey: new Date().getTime(),
+      geoLoading: false // 经纬度获取loading状态
     };
   },
   methods: {
@@ -78,7 +87,9 @@ export default {
         address: '',
         phone: '',
         avgPrice: 0,
-        businessHours: ''
+        businessHours: '',
+        longitude: '',
+        latitude: ''
       };
     },
     beforeSave() {
@@ -96,6 +107,36 @@ export default {
       }
       return message;
     },
+    // 获取经纬度
+    async handleGetCoordinates(type) {
+      const address = this.formData.address;
+      if (!address || !address.trim()) {
+        this.$message.warning('请先输入地址');
+        return;
+      }
+      
+      this.geoLoading = true;
+      try {
+        const res = await request({
+          url: config.backHost + '/api/common/geoCode',
+          method: 'POST',
+          data: { address: address }
+        });
+        
+        if (res.code === 200 && res.data) {
+          this.formData.longitude = res.data.longitude || '';
+          this.formData.latitude = res.data.latitude || '';
+          this.$message.success('经纬度获取成功');
+        } else {
+          this.$message.error('地址解析失败，请检查地址格式或手动输入');
+        }
+      } catch (error) {
+        console.error('地址解析失败:', error);
+        this.$message.error('地址解析失败，请检查地址格式或手动输入');
+      } finally {
+        this.geoLoading = false;
+      }
+    }
   }
 };
 </script>

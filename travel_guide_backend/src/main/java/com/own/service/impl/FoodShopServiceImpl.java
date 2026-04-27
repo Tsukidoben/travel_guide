@@ -10,14 +10,17 @@ import com.own.mappers.FoodShopMapper;
 import com.own.model.FoodShop;
 import com.own.model.vo.DelVo;
 import com.own.service.FoodShopService;
+import com.own.service.GeoCodeService;
 import cn.y8e.common.exception.BaseException;
 import cn.y8e.common.utils.convert.ConvertUtil;
 import cn.y8e.common.vo.QueryFilter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 小吃店铺表
@@ -26,6 +29,9 @@ import java.util.List;
 @Service
 @Transactional(rollbackFor = Exception.class)
 public class FoodShopServiceImpl extends ServiceImpl<FoodShopMapper, FoodShop> implements FoodShopService {
+
+    @Autowired
+    private GeoCodeService geoCodeService;
 
     @Override
     public void saveOrUpdatePlus(FoodShop foodShop) {
@@ -44,6 +50,15 @@ public class FoodShopServiceImpl extends ServiceImpl<FoodShopMapper, FoodShop> i
                                    phone.matches("^0\\d{2,3}-?\\d{7,8}$");  // 固定电话
             if (!isValidPhone) {
                 throw new BaseException("电话号码格式不正确");
+            }
+        }
+        
+        // 自动解析地址为经纬度
+        if (ObjectUtil.isNotEmpty(foodShop.getAddress())) {
+            Map<String, Object> geoResult = geoCodeService.geoCode(foodShop.getAddress());
+            if (ObjectUtil.isNotEmpty(geoResult) && geoResult.containsKey("longitude") && geoResult.containsKey("latitude")) {
+                foodShop.setLongitude(new java.math.BigDecimal(geoResult.get("longitude").toString()));
+                foodShop.setLatitude(new java.math.BigDecimal(geoResult.get("latitude").toString()));
             }
         }
         

@@ -13,18 +13,20 @@ import com.own.model.AttractionInfo;
 import com.own.model.TicketInfo;
 import com.own.service.AttractionCollectionService;
 import com.own.service.AttractionInfoService;
+import com.own.service.GeoCodeService;
 import com.own.model.vo.DelVo;
 import com.own.common.utils.CommonUtil;
 import cn.y8e.common.utils.convert.ConvertUtil;
 import cn.y8e.common.exception.BaseException;
 import cn.y8e.common.vo.QueryFilter;
 import com.own.service.TicketInfoService;
-import kotlin.jvm.internal.Lambda;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 
 /**
  * 景点信息表
@@ -33,6 +35,9 @@ import java.util.ArrayList;
 @Service
 @Transactional(rollbackFor = Exception.class)
 public class AttractionInfoServiceImpl extends ServiceImpl<AttractionInfoMapper, AttractionInfo> implements AttractionInfoService {
+
+    @Autowired
+    private GeoCodeService geoCodeService;
 
     @Override
     public void saveOrUpdatePlus(AttractionInfo attractionInfo) {
@@ -57,6 +62,16 @@ public class AttractionInfoServiceImpl extends ServiceImpl<AttractionInfoMapper,
         if (ObjectUtil.isEmpty(attractionInfo.getAttractionPlace())) {
             throw new BaseException("景点位置不能为空");
         }
+        
+        // 自动解析地址为经纬度
+        if (ObjectUtil.isNotEmpty(attractionInfo.getAttractionPlace())) {
+            Map<String, Object> geoResult = geoCodeService.geoCode(attractionInfo.getAttractionPlace());
+            if (ObjectUtil.isNotEmpty(geoResult) && geoResult.containsKey("longitude") && geoResult.containsKey("latitude")) {
+                attractionInfo.setLongitude(new java.math.BigDecimal(geoResult.get("longitude").toString()));
+                attractionInfo.setLatitude(new java.math.BigDecimal(geoResult.get("latitude").toString()));
+            }
+        }
+        
         if(ObjectUtil.isEmpty(attractionInfo.getId())){
             this.save(attractionInfo);
         }else{
