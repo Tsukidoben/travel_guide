@@ -53,9 +53,9 @@
       <el-row :gutter="25" style="margin: 0">
         <el-col :span="17">
           <div class="main-content shadow-card">
-            <div v-if="detail.attractionPic" class="card-image" :class="'pic-count-' + JSON.parse(detail.attractionPic).length">
-              <el-image v-if="detail.attractionPic && JSON.parse(detail.attractionPic).length == 1" :src="getPicUrlByJson(detail.attractionPic,0)" :preview-src-list="[getPicUrlByJson(detail.attractionPic,0)]"></el-image>
-              <template v-else-if="detail.attractionPic && JSON.parse(detail.attractionPic).length == 2">
+            <div v-if="parsedAttractionPics.length > 0" class="card-image" :class="'pic-count-' + parsedAttractionPics.length">
+              <el-image v-if="parsedAttractionPics.length == 1" :src="getPicUrlByJson(detail.attractionPic,0)" :preview-src-list="[getPicUrlByJson(detail.attractionPic,0)]"></el-image>
+              <template v-else-if="parsedAttractionPics.length == 2">
                 <div style="width: 50%;overflow: hidden">
                   <el-image :src="getPicUrlByJson(detail.attractionPic,0)" :preview-src-list="[getPicUrlByJson(detail.attractionPic,0)]"></el-image>
                 </div>
@@ -64,7 +64,7 @@
                 </div>
               </template>
 
-              <template v-else-if="detail.attractionPic && JSON.parse(detail.attractionPic).length >= 3">
+              <template v-else-if="parsedAttractionPics.length >= 3">
                 <div style="width: 66%;overflow: hidden">
                   <el-image class="pic-main" :src="getPicUrlByJson(detail.attractionPic,0)" :preview-src-list="[getPicUrlByJson(detail.attractionPic,0)]"></el-image>
                 </div>
@@ -205,13 +205,30 @@
                             <span class="label">预估费用：</span>
                             <span class="value">￥{{ currentTrafficData.cost }}</span>
                           </div>
-                          <div class="info-row route-desc">
-                            <span class="label">路线说明：</span>
-                            <span class="value">{{ currentTrafficData.routeDescription }}</span>
+                          
+                          <!-- 高德地图导航按钮 - 替换原来的路线说明 -->
+                          <div class="info-row navigation-row">
+                            <el-button 
+                              type="primary" 
+                              icon="el-icon-location" 
+                              @click="openAmapNavigation"
+                              class="nav-btn"
+                            >
+                              打开高德地图导航
+                            </el-button>
                           </div>
                         </div>
 
                         <el-empty v-else description="暂无交通信息" :image-size="60"></el-empty>
+                      </div>
+
+                      <!-- 高德地图容器 -->
+                      <div class="amap-wrapper" ref="amapWrapper" v-show="selectedAttractionId">
+                        <div v-if="mapLoading" class="map-loading">
+                          <i class="el-icon-loading"></i>
+                          <span>地图加载中...</span>
+                        </div>
+                        <div id="amap-container" ref="amapContainer" class="amap-container"></div>
                       </div>
 
                       <!-- 沿途特色小吃推荐（选中景点后显示） -->
@@ -319,7 +336,7 @@
         </el-col>
 
         <el-col :span="7">
-
+          <!-- 预留右侧边栏空间 -->
         </el-col>
       </el-row>
     </div>
@@ -327,6 +344,7 @@
 </template>
 
 <script>
+/* global AMap */
 import request from "@/utils/request";
 import config from "@/config/config";
 import common from "@/utils/common";
@@ -339,7 +357,6 @@ export default {
   data() {
     return {
       detail: {},
-      picList: [],
       ticketList: [],
       selectedTicketId: null,
       currentPrice: 0,
@@ -368,7 +385,13 @@ export default {
         { label: '自驾', value: 'drive' },
         { label: '公交', value: 'bus' },
         { label: '打车', value: 'taxi' }
-      ]
+      ],
+      mapInstance: null, // 高德地图实例
+      polylineInstance: null, // 路线覆盖物实例
+      startMarker: null, // 起点标记
+      endMarker: null, // 终点标记
+      foodMarkers: [], // 小吃店标记数组
+      mapLoading: true // 地图加载状态
     };
   },
   computed: {
@@ -379,6 +402,15 @@ export default {
     visitorSummary() {
       const active = this.visitorTypes.filter(v => v.count > 0);
       return active.map(v => `${v.label} x ${v.count}`).join(', ');
+    },
+    // 解析后的景点图片数组
+    parsedAttractionPics() {
+      if (!this.detail.attractionPic) return [];
+      try {
+        return JSON.parse(this.detail.attractionPic);
+      } catch (e) {
+        return [];
+      }
     },
     // 当前交通方式的数据
     currentTrafficData() {
@@ -397,8 +429,29 @@ export default {
         distance: this.trafficInfo.distance,
         duration: `${trafficTypeData.time}分钟`,
         cost: trafficTypeData.cost,
-        routeDescription: trafficTypeData.description
+        polyline: trafficTypeData.polyline // 添加 polyline 字段
       };
+    }
+  },
+  watch: {
+    // 监听交通方式变化，重新绘制地图
+    currentTrafficType() {
+      if (this.trafficInfo) {
+        this.$nextTick(() => {
+          const polyline = this.currentTrafficData ? this.currentTrafficData.polyline : null;
+          this.drawRouteOnMap(polyline);
+        });
+      }
+    },
+    // 监听 Tab 切换，切换到路线推荐时重新渲染地图
+    activeName(newVal) {
+      if (newVal === 'first' && this.trafficInfo && this.selectedAttractionId) {
+        console.log('切换到路线推荐 Tab，重新渲染地图');
+        this.$nextTick(() => {
+          const polyline = this.currentTrafficData ? this.currentTrafficData.polyline : null;
+          this.drawRouteOnMap(polyline);
+        });
+      }
     }
   },
   mounted() {
@@ -413,6 +466,34 @@ export default {
         },10)
       }
     });
+  },
+  beforeDestroy() {
+    // 组件销毁时清理地图实例
+    if (this.mapInstance) {
+      // 先清理所有小吃店标记
+      this.foodMarkers.forEach(marker => {
+        this.mapInstance.remove(marker);
+      });
+      this.foodMarkers = [];
+      
+      // 再清理其他标记
+      if (this.polylineInstance) {
+        this.mapInstance.remove(this.polylineInstance);
+      }
+      if (this.startMarker) {
+        this.mapInstance.remove(this.startMarker);
+      }
+      if (this.endMarker) {
+        this.mapInstance.remove(this.endMarker);
+      }
+      
+      // 最后销毁地图实例
+      this.mapInstance.destroy();
+      this.mapInstance = null;
+      this.polylineInstance = null;
+      this.startMarker = null;
+      this.endMarker = null;
+    }
   },
   methods: {
     selTab(val){
@@ -464,7 +545,6 @@ export default {
       const res = await request({ url: config.backHost + `/attractionInfo/getById/${id}` });
       if (res.code === 200) {
         this.detail = res.data;
-        this.parsePics();
         this.getClassify()
         this.getTickets(id);
       }
@@ -494,20 +574,7 @@ export default {
         }
       }
     },
-    parsePics() {
-      if (this.detail.attractionPic) {
-        try {
-          const list = JSON.parse(this.detail.attractionPic);
-          this.picList = list.map(item => config.backHost + '/file/download/' + item.id);
-        } catch (e) {
-          this.picList = [this.getPicUrlByJson(this.detail.attractionPic, 0)];
-        }
-      }
-    },
     handleCollect() {
-      this.setCollect()
-    },
-    setCollect(){
       let url = ''
       if(this.detail.isCollect == 1){
         url = '/attractionCollection/noCollect/'+this.detail.id
@@ -590,6 +657,12 @@ export default {
             bus: data.bus || null,
             taxi: data.taxi || null
           };
+          
+          // 加载完成后，自动绘制地图（无论有没有polyline数据）
+          setTimeout(() => {
+            const polyline = this.currentTrafficData ? this.currentTrafficData.polyline : null;
+            this.drawRouteOnMap(polyline);
+          }, 100);
         } else {
           this.trafficInfo = null;
           this.$message.warning('该路线暂无交通信息');
@@ -643,6 +716,354 @@ export default {
       this.$router.push({
         name: 'foodDetail',
         query: { id: foodId }
+      });
+    },
+    // 打开高德地图导航
+    openAmapNavigation() {
+      if (!this.trafficInfo || !this.selectedAttractionId) {
+        this.$message.warning('请先选择景点');
+        return;
+      }
+      
+      // 获取起点和终点信息
+      const fromAttraction = this.detail; // 当前景点（起点）
+      const toAttraction = this.nextAttractions.find(a => a.id === this.selectedAttractionId); // 目标景点（终点）
+      
+      if (!fromAttraction || !toAttraction) {
+        this.$message.error('景点信息不完整');
+        return;
+      }
+      
+      // 检查坐标是否存在
+      if (!fromAttraction.longitude || !fromAttraction.latitude || !toAttraction.longitude || !toAttraction.latitude) {
+        this.$message.error('景点坐标信息缺失');
+        return;
+      }
+      
+      // 确定导航类型
+      let mode = 'drive'; // 默认驾车
+      if (this.currentTrafficType === 'bus') {
+        mode = 'bus'; // 公交
+      } else if (this.currentTrafficType === 'taxi') {
+        mode = 'drive'; // 打车也用驾车模式
+      }
+      
+      // 使用高德官方推荐的标准导航跳转链接
+      // 格式：https://uri.amap.com/navigation?from=经度,纬度&to=经度,纬度&mode=交通方式&src=来源标识
+      const fromCoord = `${fromAttraction.longitude},${fromAttraction.latitude}`;
+      const toCoord = `${toAttraction.longitude},${toAttraction.latitude}`;
+      
+      const amapUrl = `https://uri.amap.com/navigation?from=${fromCoord}&to=${toCoord}&mode=${mode}&src=贵阳旅游攻略系统`;
+      
+      // 在新窗口打开
+      const newWindow = window.open(amapUrl, '_blank');
+      
+      if (!newWindow) {
+        this.$message.error('弹窗被浏览器拦截，请允许弹窗后重试');
+      } else {
+        this.$message.success('正在打开高德地图导航...');
+      }
+    },
+    // 初始化高德地图
+    initAMap() {
+      return new Promise((resolve, reject) => {
+        if (window.AMap) {
+          resolve(window.AMap);
+          return;
+        }
+        
+        const amapKey = 'ce1da13e89ae4c9a4dfdde2447fba5a7';
+        
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = `https://webapi.amap.com/maps?v=2.0&key=${amapKey}&plugin=AMap.Scale,AMap.ToolBar`;
+        script.onload = () => {
+          resolve(window.AMap);
+        };
+        script.onerror = () => {
+          reject(new Error('高德地图API加载失败，请检查Key是否正确'));
+        };
+        document.head.appendChild(script);
+      });
+    },
+    // 在地图上绘制路线
+    async drawRouteOnMap(polyline) {
+      // 如果当前不在路线推荐 Tab，不创建地图
+      if (this.activeName !== 'first') {
+        return;
+      }
+      
+      // 如果没有选中的景点，不创建地图
+      if (!this.selectedAttractionId) {
+        return;
+      }
+      
+      this.mapLoading = true;
+      
+      try {
+        await this.$nextTick();
+        await this.$nextTick();
+        await this.$nextTick();
+        
+        // 额外等待一段时间，确保 DOM 完全渲染
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const container = this.$refs.amapContainer;
+        const wrapper = this.$refs.amapWrapper;
+        
+        if (!container || !wrapper) {
+          console.error('地图容器不存在');
+          this.$message.error('地图容器未找到');
+          this.mapLoading = false;
+          return;
+        }
+        
+        // 检查容器尺寸
+        const containerRect = container.getBoundingClientRect();
+        
+        // 如果容器高度为 0，尝试强制设置高度
+        if (containerRect.height === 0) {
+          // 强制设置容器高度
+          container.style.height = '400px';
+          // 再次等待渲染
+          await this.$nextTick();
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // 重新检查尺寸
+          const newRect = container.getBoundingClientRect();
+          
+          if (newRect.height === 0) {
+            console.error('容器高度仍然为 0，无法初始化地图');
+            this.$message.error('地图容器尺寸异常');
+            this.mapLoading = false;
+            return;
+          }
+        }
+        
+        const AMap = await this.initAMap();
+        
+        if (this.mapInstance) {
+          this.mapInstance.destroy();
+          this.mapInstance = null;
+        }
+        
+        this.polylineInstance = null;
+        this.startMarker = null;
+        this.endMarker = null;
+        this.foodMarkers = [];
+        
+        this.mapInstance = new AMap.Map(container, {
+          zoom: 12,
+          center: [106.7134, 26.5783],
+          viewMode: '2D',
+          resizeEnable: true
+        });
+        
+        const fromAttraction = this.detail;
+        const toAttraction = this.nextAttractions.find(a => a.id === this.selectedAttractionId);
+        
+        if (!fromAttraction || !toAttraction || !fromAttraction.longitude || !toAttraction.longitude) {
+          console.warn('景点坐标信息缺失');
+          this.$message.warning('景点坐标信息缺失');
+          this.mapLoading = false;
+          return;
+        }
+        
+        const startPoint = [fromAttraction.longitude, fromAttraction.latitude];
+        const endPoint = [toAttraction.longitude, toAttraction.latitude];
+        
+        let path = [];
+        if (polyline) {
+          path = this.parsePolyline(polyline);
+        }
+        
+        this.startMarker = new AMap.Marker({
+          position: path.length > 0 ? path[0] : startPoint,
+          icon: new AMap.Icon({
+            size: new AMap.Size(25, 34),
+            image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png',
+            imageSize: new AMap.Size(25, 34)
+          }),
+          offset: new AMap.Pixel(-13, -30),
+          title: '起点'
+        });
+        
+        this.endMarker = new AMap.Marker({
+          position: path.length > 0 ? path[path.length - 1] : endPoint,
+          icon: new AMap.Icon({
+            size: new AMap.Size(25, 34),
+            image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png',
+            imageSize: new AMap.Size(25, 34)
+          }),
+          offset: new AMap.Pixel(-13, -30),
+          title: '终点'
+        });
+        
+        this.mapInstance.add([this.startMarker, this.endMarker]);
+        
+        if (path.length > 1) {
+          let routeColor = '#FF8A45';
+          if (this.currentTrafficType === 'bus') {
+            routeColor = '#1890FF';
+          } else if (this.currentTrafficType === 'taxi') {
+            routeColor = '#52C41A';
+          }
+          
+          this.polylineInstance = new AMap.Polyline({
+            path: path,
+            strokeColor: routeColor,
+            strokeWeight: 6,
+            strokeOpacity: 0.8,
+            strokeStyle: 'solid',
+            lineJoin: 'round',
+            lineCap: 'round'
+          });
+          
+          this.mapInstance.add(this.polylineInstance);
+          
+          const fitViewElements = [this.startMarker, this.endMarker, this.polylineInstance];
+          
+          if (this.foodShops && this.foodShops.length > 0) {
+            this.drawFoodMarkers(this.foodShops);
+            fitViewElements.push(...this.foodMarkers);
+          }
+          
+          this.mapInstance.setFitView(fitViewElements);
+        } else {
+          this.mapInstance.setFitView([this.startMarker, this.endMarker]);
+        }
+        
+        setTimeout(() => {
+          if (this.mapInstance) {
+            this.mapInstance.resize();
+            // 再次调整视野确保地图完全显示
+            const fitViewElements = [this.startMarker, this.endMarker];
+            if (this.polylineInstance) {
+              fitViewElements.push(this.polylineInstance);
+            }
+            if (this.foodMarkers && this.foodMarkers.length > 0) {
+              fitViewElements.push(...this.foodMarkers);
+            }
+            this.mapInstance.setFitView(fitViewElements);
+          }
+          this.mapLoading = false;
+        }, 300);
+      } catch (error) {
+        console.error('地图渲染失败:', error);
+        this.$message.error('地图加载失败：' + error.message);
+        this.mapLoading = false;
+      }
+    },
+    // 解析 polyline 字符串为坐标数组
+    parsePolyline(polylineStr) {
+      if (!polylineStr) return [];
+      
+      try {
+        // polyline 可能是 JSON 字符串或分号分隔的字符串
+        let points = [];
+        if (typeof polylineStr === 'string') {
+          // 尝试解析 JSON
+          if (polylineStr.startsWith('[')) {
+            points = JSON.parse(polylineStr);
+          } else {
+            // 分号分隔格式: "lng,lat;lng,lat"
+            points = polylineStr.split(';').map(point => {
+              const [lng, lat] = point.split(',').map(Number);
+              return [lng, lat];
+            });
+          }
+        }
+        
+        return points.filter(p => !isNaN(p[0]) && !isNaN(p[1]));
+      } catch (error) {
+        console.error('解析 polyline 失败:', error);
+        return [];
+      }
+    },
+    // 绘制小吃店标记
+    drawFoodMarkers(foodShops) {
+      if (!this.mapInstance) return;
+      
+      // 清除旧的小吃店标记
+      this.foodMarkers.forEach(marker => {
+        this.mapInstance.remove(marker);
+      });
+      this.foodMarkers = [];
+      
+      // 为每个小吃店创建标记
+      foodShops.forEach(shop => {
+        // 尝试不同的字段名（兼容多种情况）
+        const lng = shop.longitude || shop.lng || shop.shopLongitude || shop.shopLng;
+        const lat = shop.latitude || shop.lat || shop.shopLatitude || shop.shopLat;
+        
+        // 检查经纬度是否有效（排除 null, undefined, 0, 空字符串）
+        if (!lng || !lat) return;
+        
+        // 获取小吃图片 URL
+        let foodImageUrl = '';
+        if (shop.images) {
+          try {
+            const images = typeof shop.images === 'string' ? JSON.parse(shop.images) : shop.images;
+            if (images && images.length > 0) {
+              const imageId = images[0].id || images[0];
+              foodImageUrl = config.backHost + '/file/download/' + imageId;
+            }
+          } catch (e) {
+            console.error('解析小吃图片失败:', e);
+          }
+        }
+        
+        // 创建标记 - 使用小吃图片作为图标
+        const marker = new AMap.Marker({
+          position: [lng, lat],
+          icon: new AMap.Icon({
+            size: new AMap.Size(48, 48), // 图标尺寸
+            image: foodImageUrl || 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png', // 使用小吃图片，如果没有则使用默认标记
+            imageSize: new AMap.Size(48, 48)
+          }),
+          offset: new AMap.Pixel(-24, -48), // 偏移量，使图片底部中心对准坐标点
+          title: shop.name
+        });
+        
+        // 设置信息窗体内容
+        const infoContent = `
+          <div style="padding: 0; min-width: 180px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+            ${foodImageUrl ? `
+            <div style="width: 100%; height: 100px; overflow: hidden;">
+              <img src="${foodImageUrl}" style="width: 100%; height: 100%; object-fit: cover;" />
+            </div>` : ''}
+            <div style="padding: 10px; background: #fff;">
+              <div style="font-size: 14px; font-weight: bold; color: #333; margin-bottom: 8px;">${shop.name}</div>
+              <div style="font-size: 12px; color: #666; margin-bottom: 4px;">
+                <i class="el-icon-location-outline" style="color: #FF8A45; margin-right: 4px;"></i>
+                ${shop.address || '地址未知'}
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                <div style="font-size: 12px; color: #FF8A45; font-weight: bold;">
+                  人均：￥${shop.avgPrice}
+                </div>
+                <div style="font-size: 11px; color: #999;">
+                  距路线：${shop.distance}km
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // 创建信息窗体
+        const infoWindow = new AMap.InfoWindow({
+          content: infoContent,
+          offset: new AMap.Pixel(0, -35)
+        });
+        
+        // 点击标记显示信息窗体
+        marker.on('click', () => {
+          infoWindow.open(this.mapInstance, marker.getPosition());
+        });
+        
+        // 添加到地图
+        this.mapInstance.add(marker);
+        this.foodMarkers.push(marker);
       });
     }
   }
@@ -1244,6 +1665,79 @@ $dark-text: #1a2b49;
               }
             }
           }
+        }
+      }
+    }
+
+    // 高德地图容器样式
+    .amap-wrapper {
+      position: relative;
+      width: 100%;
+      margin-top: 20px;
+      
+      .map-loading {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 400px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #f5f7fa;
+        border-radius: 12px;
+        z-index: 10;
+        
+        i {
+          font-size: 32px;
+          color: $theme-color;
+          margin-bottom: 10px;
+        }
+        
+        span {
+          font-size: 14px;
+          color: #666;
+        }
+      }
+      
+      .amap-container {
+        width: 100%;
+        height: 400px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e8e8e8;
+        position: relative;
+        z-index: 1;
+      }
+    }
+    
+    // 导航按钮行
+    &.navigation-row {
+      justify-content: center;
+      padding: 20px 0 10px;
+      border-bottom: none;
+      
+      .nav-btn {
+        width: 100%;
+        max-width: 300px;
+        height: 44px;
+        font-size: 15px;
+        font-weight: 500;
+        border-radius: 22px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s;
+        
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+        
+        &:active {
+          transform: translateY(0);
         }
       }
     }
