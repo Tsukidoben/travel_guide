@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -45,6 +46,11 @@ public class RouteServiceImpl implements RouteService {
 
     private static final String AMAP_DRIVING_URL = "https://restapi.amap.com/v3/direction/driving";
     private static final String AMAP_TRANSIT_URL = "https://restapi.amap.com/v3/direction/transit/integrated";
+
+    // 本地缓存（使用ConcurrentHashMap实现简单缓存）
+    private static final Map<String, Object> CACHE = new ConcurrentHashMap<>();
+    private static final long CACHE_EXPIRE_TIME = 5 * 60 * 1000; // 5分钟过期
+    private static final Map<String, Long> CACHE_TIMESTAMP = new ConcurrentHashMap<>();
 
     @Override
     public List<Map<String, Object>> getNextAttraction(String attractionId) {
@@ -702,5 +708,479 @@ public class RouteServiceImpl implements RouteService {
     private double roundToTwoDecimal(double value) {
         BigDecimal bd = new BigDecimal(value);
         return bd.setScale(2, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    /**
+     * 缓存工具方法 - 获取缓存
+     */
+    @SuppressWarnings("unchecked")
+    private <T> T getFromCache(String key) {
+        Long timestamp = CACHE_TIMESTAMP.get(key);
+        if (timestamp != null && (System.currentTimeMillis() - timestamp) < CACHE_EXPIRE_TIME) {
+            return (T) CACHE.get(key);
+        }
+        // 缓存过期，清除
+        CACHE.remove(key);
+        CACHE_TIMESTAMP.remove(key);
+        return null;
+    }
+
+    /**
+     * 缓存工具方法 - 设置缓存
+     */
+    private void putToCache(String key, Object value) {
+        CACHE.put(key, value);
+        CACHE_TIMESTAMP.put(key, System.currentTimeMillis());
+    }
+
+    @Override
+    public Map<String, Object> getTrafficInfoByType(String fromAttractionId, String toAttractionId, String transportType) {
+        // 缓存key
+        String cacheKey = "traffic_" + fromAttractionId + "_" + toAttractionId + "_" + transportType;
+        
+        // 尝试从缓存获取
+        Map<String, Object> cachedResult = getFromCache(cacheKey);
+        if (cachedResult != null) {
+            log.info("从缓存获取交通信息: {}", cacheKey);
+            return cachedResult;
+        }
+
+        // 获取完整的交通信息
+        Map<String, Object> fullTrafficInfo = getTrafficInfo(fromAttractionId, toAttractionId);
+        
+        // 根据交通方式筛选
+        if ("all".equals(transportType) || transportType == null) {
+            putToCache(cacheKey, fullTrafficInfo);
+            return fullTrafficInfo;
+        }
+
+        Map<String, Object> filteredResult = new HashMap<>();
+        filteredResult.put("distance", fullTrafficInfo.get("distance"));
+        
+        switch (transportType.toLowerCase()) {
+            case "drive":
+                filteredResult.put("drive", fullTrafficInfo.get("drive"));
+                break;
+            case "bus":
+                filteredResult.put("bus", fullTrafficInfo.get("bus"));
+                break;
+            case "taxi":
+                filteredResult.put("taxi", fullTrafficInfo.get("taxi"));
+                break;
+            default:
+                filteredResult = fullTrafficInfo;
+        }
+
+        // 存入缓存
+        putToCache(cacheKey, filteredResult);
+        return filteredResult;
+    }
+
+    @Override
+    public Map<String, Object> getMapRouteData(String fromAttractionId, String toAttractionId, String transportType) {
+        // 缓存key
+        String cacheKey = "map_route_" + fromAttractionId + "_" + toAttractionId + "_" + transportType;
+        
+        // 尝试从缓存获取
+        Map<String, Object> cachedResult = getFromCache(cacheKey);
+        if (cachedResult != null) {
+            log.info("从缓存获取地图路线数据: {}", cacheKey);
+            return cachedResult;
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // 获取起点、终点经纬度
+            AttractionInfo fromAttraction = attractionInfoMapper.selectById(fromAttractionId);
+            AttractionInfo toAttraction = attractionInfoMapper.selectById(toAttractionId);
+
+            if (fromAttraction == null || toAttraction == null 
+                    || fromAttraction.getLongitude() == null || fromAttraction.getLatitude() == null
+                    || toAttraction.getLongitude() == null || toAttraction.getLatitude() == null) {
+                return result;
+            }
+
+            String origin = fromAttraction.getLongitude() + "," + fromAttraction.getLatitude();
+            String destination = toAttraction.getLongitude() + "," + toAttraction.getLatitude();
+
+            // 根据不同交通方式获取路线数据
+            if ("drive".equals(transportType) || "taxi".equals(transportType)) {
+                // 驾车/打车路线
+                Map<String, Object> params = new HashMap<>();
+                params.put("key", amapKey);
+                params.put("origin", origin);
+                params.put("destination", destination);
+                params.put("output", "json");
+                
+                String response = HttpUtil.get(AMAP_DRIVING_URL, params);
+                JSONObject jsonResponse = JSONUtil.parseObj(response);
+                
+                if ("1".equals(jsonResponse.getStr("status"))) {
+                    JSONObject routeResult = jsonResponse.getJSONObject("route");
+                    if (routeResult != null) {
+                        JSONArray paths = routeResult.getJSONArray("paths");
+                        if (paths != null && !paths.isEmpty()) {
+                            JSONObject firstPath = paths.getJSONObject(0);
+                            
+                            // 提取polyline
+                            String polyline = extractPolyline(firstPath);
+                            result.put("polyline", polyline);
+                            
+                            // 提取路线节点标记
+                            List<Map<String, Object>> markers = extractDriveMarkers(firstPath, fromAttraction, toAttraction);
+                            result.put("markers", markers);
+                            
+                            // 距离和耗时
+                            double distance = firstPath.getDouble("distance", 0.0) / 1000.0;
+                            int duration = firstPath.getInt("duration", 0);
+                            result.put("distance", roundToTwoDecimal(distance));
+                            result.put("duration", (int) Math.ceil(duration / 60.0));
+                        }
+                    }
+                }
+            } else if ("bus".equals(transportType)) {
+                // 公交路线
+                Map<String, Object> params = new HashMap<>();
+                params.put("key", amapKey);
+                params.put("origin", origin);
+                params.put("destination", destination);
+                params.put("output", "json");
+                params.put("city", "贵阳");
+
+                String response = HttpUtil.get(AMAP_TRANSIT_URL, params);
+                JSONObject jsonResponse = JSONUtil.parseObj(response);
+                
+                if ("1".equals(jsonResponse.getStr("status"))) {
+                    JSONObject routeResult = jsonResponse.getJSONObject("route");
+                    if (routeResult != null) {
+                        JSONArray transits = routeResult.getJSONArray("transits");
+                        if (transits != null && !transits.isEmpty()) {
+                            JSONObject firstTransit = transits.getJSONObject(0);
+                            
+                            // 提取polyline
+                            String polyline = extractBusPolyline(firstTransit);
+                            result.put("polyline", polyline);
+                            
+                            // 提取公交站点标记
+                            List<Map<String, Object>> markers = extractBusStations(firstTransit);
+                            result.put("markers", markers);
+                            
+                            // 距离和耗时
+                            double distance = firstTransit.getDouble("distance", 0.0) / 1000.0;
+                            int duration = firstTransit.getInt("duration", 0);
+                            result.put("distance", roundToTwoDecimal(distance));
+                            result.put("duration", (int) Math.ceil(duration / 60.0));
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("获取地图路线数据异常", e);
+        }
+
+        // 存入缓存
+        putToCache(cacheKey, result);
+        return result;
+    }
+
+    /**
+     * 提取驾车路线节点标记（高速口等）
+     */
+    private List<Map<String, Object>> extractDriveMarkers(JSONObject path, AttractionInfo fromAttraction, AttractionInfo toAttraction) {
+        List<Map<String, Object>> markers = new ArrayList<>();
+        
+        // 添加起点标记
+        Map<String, Object> startMarker = new HashMap<>();
+        startMarker.put("type", "start");
+        startMarker.put("name", fromAttraction.getAttractionName());
+        startMarker.put("longitude", fromAttraction.getLongitude());
+        startMarker.put("latitude", fromAttraction.getLatitude());
+        markers.add(startMarker);
+        
+        // 从步骤中提取关键节点（如高速口）
+        JSONArray steps = path.getJSONArray("steps");
+        if (steps != null && !steps.isEmpty()) {
+            for (int i = 0; i < steps.size(); i++) {
+                JSONObject step = steps.getJSONObject(i);
+                String instruction = step.getStr("instruction", "");
+                
+                // 检测是否包含高速公路相关信息
+                if (instruction.contains("高速") || instruction.contains("收费站")) {
+                    Map<String, Object> marker = new HashMap<>();
+                    marker.put("type", "highway");
+                    marker.put("name", instruction.length() > 20 ? instruction.substring(0, 20) + "..." : instruction);
+                    
+                    // 提取该步骤的坐标（取第一步的坐标作为标记点）
+                    String polyline = step.getStr("polyline", "");
+                    if (ObjectUtil.isNotEmpty(polyline)) {
+                        String[] coords = polyline.split(";")[0].split(",");
+                        if (coords.length == 2) {
+                            try {
+                                marker.put("longitude", new BigDecimal(coords[0]));
+                                marker.put("latitude", new BigDecimal(coords[1]));
+                            } catch (Exception e) {
+                                log.warn("解析坐标失败", e);
+                            }
+                        }
+                    }
+                    
+                    markers.add(marker);
+                }
+            }
+        }
+        
+        // 添加终点标记
+        Map<String, Object> endMarker = new HashMap<>();
+        endMarker.put("type", "end");
+        endMarker.put("name", toAttraction.getAttractionName());
+        endMarker.put("longitude", toAttraction.getLongitude());
+        endMarker.put("latitude", toAttraction.getLatitude());
+        markers.add(endMarker);
+        
+        return markers;
+    }
+
+    /**
+     * 提取公交站点标记
+     */
+    private List<Map<String, Object>> extractBusStations(JSONObject transit) {
+        List<Map<String, Object>> markers = new ArrayList<>();
+        
+        JSONArray segments = transit.getJSONArray("segments");
+        if (segments != null && !segments.isEmpty()) {
+            for (int i = 0; i < segments.size(); i++) {
+                JSONObject segment = segments.getJSONObject(i);
+                
+                // 提取公交部分
+                JSONObject bus = segment.getJSONObject("bus");
+                if (bus != null) {
+                    JSONArray buslines = bus.getJSONArray("buslines");
+                    if (buslines != null && !buslines.isEmpty()) {
+                        for (int j = 0; j < buslines.size(); j++) {
+                            JSONObject busline = buslines.getJSONObject(j);
+                            
+                            // 提取途经站点
+                            JSONArray viaStops = busline.getJSONArray("via_stops");
+                            if (viaStops != null && !viaStops.isEmpty()) {
+                                for (int k = 0; k < viaStops.size(); k++) {
+                                    JSONObject stop = viaStops.getJSONObject(k);
+                                    Map<String, Object> marker = new HashMap<>();
+                                    marker.put("type", "bus_station");
+                                    marker.put("name", stop.getStr("name", ""));
+                                    
+                                    String location = stop.getStr("location", "");
+                                    if (ObjectUtil.isNotEmpty(location)) {
+                                        String[] coords = location.split(",");
+                                        if (coords.length == 2) {
+                                            try {
+                                                marker.put("longitude", new BigDecimal(coords[0]));
+                                                marker.put("latitude", new BigDecimal(coords[1]));
+                                            } catch (Exception e) {
+                                                log.warn("解析公交站点坐标失败", e);
+                                            }
+                                        }
+                                    }
+                                    
+                                    markers.add(marker);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return markers;
+    }
+
+    @Override
+    public Map<String, Object> getNearFoodShopWithPage(String fromAttractionId, String toAttractionId,
+                                                        Integer pageNum, Integer pageSize,
+                                                        String sortBy, String sortOrder,
+                                                        String businessStatus) {
+        // 缓存key
+        String cacheKey = "food_page_" + fromAttractionId + "_" + toAttractionId + "_" + pageNum + "_" + pageSize + "_" + sortBy + "_" + sortOrder + "_" + businessStatus;
+        
+        // 尝试从缓存获取
+        Map<String, Object> cachedResult = getFromCache(cacheKey);
+        if (cachedResult != null) {
+            log.info("从缓存获取分页小吃数据: {}", cacheKey);
+            return cachedResult;
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        
+        // 默认分页参数
+        if (pageNum == null || pageNum < 1) pageNum = 1;
+        if (pageSize == null || pageSize < 1) pageSize = 10;
+        
+        // 获取所有沿途小吃
+        List<Map<String, Object>> allFoodShops = getNearFoodShop(fromAttractionId, toAttractionId);
+        
+        // 补充完整信息（包括business_status, business_hours, recommend_reason等）
+        List<Map<String, Object>> enrichedShops = enrichFoodShopInfo(allFoodShops);
+        
+        // 按营业状态筛选
+        if (ObjectUtil.isNotEmpty(businessStatus)) {
+            enrichedShops = enrichedShops.stream()
+                .filter(shop -> businessStatus.equals(shop.get("businessStatus")))
+                .collect(Collectors.toList());
+        }
+        
+        // 排序
+        if (ObjectUtil.isNotEmpty(sortBy)) {
+            boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+            
+            switch (sortBy) {
+                case "convenienceIndex":
+                    enrichedShops.sort((a, b) -> {
+                        int indexA = (int) a.getOrDefault("convenienceIndex", 1);
+                        int indexB = (int) b.getOrDefault("convenienceIndex", 1);
+                        return isAsc ? Integer.compare(indexA, indexB) : Integer.compare(indexB, indexA);
+                    });
+                    break;
+                case "avgPrice":
+                    enrichedShops.sort((a, b) -> {
+                        double priceA = ((Number) a.getOrDefault("avgPrice", 0)).doubleValue();
+                        double priceB = ((Number) b.getOrDefault("avgPrice", 0)).doubleValue();
+                        return isAsc ? Double.compare(priceA, priceB) : Double.compare(priceB, priceA);
+                    });
+                    break;
+                case "distance":
+                    enrichedShops.sort((a, b) -> {
+                        double distA = ((Number) a.getOrDefault("distance", 0)).doubleValue();
+                        double distB = ((Number) b.getOrDefault("distance", 0)).doubleValue();
+                        return isAsc ? Double.compare(distA, distB) : Double.compare(distB, distA);
+                    });
+                    break;
+                default:
+                    // 默认按距离排序
+                    enrichedShops.sort(Comparator.comparingDouble(item -> ((Number) item.getOrDefault("distance", 0)).doubleValue()));
+            }
+        } else {
+            // 默认按距离排序
+            enrichedShops.sort(Comparator.comparingDouble(item -> ((Number) item.getOrDefault("distance", 0)).doubleValue()));
+        }
+        
+        // 分页
+        int total = enrichedShops.size();
+        int fromIndex = (pageNum - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        
+        List<Map<String, Object>> pagedShops = new ArrayList<>();
+        if (fromIndex < total) {
+            pagedShops = enrichedShops.subList(fromIndex, toIndex);
+        }
+        
+        result.put("total", total);
+        result.put("pageNum", pageNum);
+        result.put("pageSize", pageSize);
+        result.put("pages", (total + pageSize - 1) / pageSize);
+        result.put("records", pagedShops);
+        
+        // 存入缓存
+        putToCache(cacheKey, result);
+        return result;
+    }
+
+    /**
+     * 补充小吃店铺完整信息
+     */
+    private List<Map<String, Object>> enrichFoodShopInfo(List<Map<String, Object>> shops) {
+        for (Map<String, Object> shop : shops) {
+            Long shopId = ((Number) shop.get("id")).longValue();
+            FoodShop foodShop = foodShopMapper.selectById(shopId);
+            
+            if (foodShop != null) {
+                // 添加营业状态
+                shop.put("businessStatus", ObjectUtil.isNotEmpty(foodShop.getBusinessStatus()) 
+                    ? foodShop.getBusinessStatus() : "营业中");
+                
+                // 添加营业时间
+                shop.put("businessHours", foodShop.getBusinessHours());
+                
+                // 计算顺路指数
+                Object distanceObj = shop.get("distance");
+                if (distanceObj != null) {
+                    double distance = ((Number) distanceObj).doubleValue();
+                    int convenienceIndex = calculateConvenienceIndex(distance);
+                    shop.put("convenienceIndex", convenienceIndex);
+                }
+            }
+            
+            // 添加推荐理由（从小吃信息中获取）
+            Long foodId = shop.get("foodId") != null ? ((Number) shop.get("foodId")).longValue() : null;
+            if (foodId != null) {
+                FoodInfo foodInfo = foodInfoMapper.selectById(foodId);
+                if (foodInfo != null) {
+                    shop.put("recommendReason", foodInfo.getRecommendReason());
+                    // 更新distance_to_route到数据库
+                    if (shop.get("distance") != null) {
+                        foodInfo.setDistanceToRoute(new BigDecimal(((Number) shop.get("distance")).doubleValue()));
+                        foodInfoMapper.updateById(foodInfo);
+                    }
+                }
+            }
+        }
+        return shops;
+    }
+
+    /**
+     * 计算顺路指数
+     */
+    private int calculateConvenienceIndex(double distance) {
+        if (distance <= 0.5) {
+            return 5;
+        } else if (distance <= 1.0) {
+            return 4;
+        } else if (distance <= 2.0) {
+            return 3;
+        } else if (distance <= 3.0) {
+            return 2;
+        } else {
+            return 1;
+        }
+    }
+
+    @Override
+    public List<Map<String, Object>> getFoodMarkers(String fromAttractionId, String toAttractionId) {
+        // 缓存key
+        String cacheKey = "food_markers_" + fromAttractionId + "_" + toAttractionId;
+        
+        // 尝试从缓存获取
+        List<Map<String, Object>> cachedResult = getFromCache(cacheKey);
+        if (cachedResult != null) {
+            log.info("从缓存获取小吃标记数据: {}", cacheKey);
+            return cachedResult;
+        }
+
+        // 获取所有沿途小吃（不限制数量）
+        List<Map<String, Object>> allFoodShops = getNearFoodShop(fromAttractionId, toAttractionId);
+        
+        // 转换为标记数据格式
+        List<Map<String, Object>> markers = new ArrayList<>();
+        for (Map<String, Object> shop : allFoodShops) {
+            Map<String, Object> marker = new HashMap<>();
+            marker.put("id", shop.get("id"));
+            marker.put("foodId", shop.get("foodId"));
+            marker.put("name", shop.get("name"));
+            marker.put("longitude", shop.get("longitude"));
+            marker.put("latitude", shop.get("latitude"));
+            marker.put("avgPrice", shop.get("avgPrice"));
+            marker.put("distance", shop.get("distance"));
+            
+            // 计算顺路指数
+            if (shop.get("distance") != null) {
+                double distance = ((Number) shop.get("distance")).doubleValue();
+                marker.put("convenienceIndex", calculateConvenienceIndex(distance));
+            }
+            
+            markers.add(marker);
+        }
+        
+        // 存入缓存
+        putToCache(cacheKey, markers);
+        return markers;
     }
 }

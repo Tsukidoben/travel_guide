@@ -66,6 +66,12 @@ public class FoodShop extends Model<FoodShop> {
     private String businessHours;
 
     /**
+     * 营业状态（营业中/休息中）
+     */
+    @TableField(value = "business_status")
+    private String businessStatus;
+
+    /**
      * 人均消费
      */
     @TableField(value = "avg_price")

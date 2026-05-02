@@ -156,6 +156,15 @@ public class AttractionInfoServiceImpl extends ServiceImpl<AttractionInfoMapper,
         if(ObjectUtil.isNotEmpty(entity)){
             // 转换数据
             this.convert(entity);
+            
+            // 查询该景点的门票列表（只查询正常状态的门票）
+            List<TicketInfo> ticketList = SpringUtil.getBean(TicketInfoService.class)
+                    .lambdaQuery()
+                    .eq(TicketInfo::getAttractionId, id)
+                    .eq(TicketInfo::getStatus, "1")  // 只查询正常状态的门票
+                    .orderByAsc(TicketInfo::getTicketPrice)  // 按价格升序排序
+                    .list();
+            entity.setTicketInfoList(ticketList);
         }
 
         AttractionCollection attractionCollection = SpringUtil.getBean(AttractionCollectionService.class)

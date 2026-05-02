@@ -78,6 +78,12 @@ public class FoodInfo extends Model<FoodInfo> {
     private String recommendReason;
 
     /**
+     * 距离当前路线的距离（千米）
+     */
+    @TableField(value = "distance_to_route")
+    private java.math.BigDecimal distanceToRoute;
+
+    /**
      * 是否推荐 1是 0否
      */
     @TableField(value = "is_recommend")
@@ -130,5 +136,32 @@ public class FoodInfo extends Model<FoodInfo> {
     @Override
     public Serializable pkVal() {
         return this.id;
+    }
+
+    /**
+     * 计算顺路指数（1-5星）
+     * 距离越近，星数越高
+     * 0-0.5km: 5星
+     * 0.5-1km: 4星
+     * 1-2km: 3星
+     * 2-3km: 2星
+     * >3km: 1星
+     */
+    public int calculateConvenienceIndex() {
+        if (distanceToRoute == null) {
+            return 1;
+        }
+        double distance = distanceToRoute.doubleValue();
+        if (distance <= 0.5) {
+            return 5;
+        } else if (distance <= 1.0) {
+            return 4;
+        } else if (distance <= 2.0) {
+            return 3;
+        } else if (distance <= 3.0) {
+            return 2;
+        } else {
+            return 1;
+        }
     }
 }

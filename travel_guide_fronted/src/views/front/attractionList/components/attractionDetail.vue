@@ -175,15 +175,35 @@
 
                       <!-- 交通方式展示区（选中景点后显示） -->
                       <div v-if="selectedAttractionId && trafficInfo" class="traffic-section">
-                        <div class="traffic-tabs">
+                        <!-- 三种交通方式横向对比卡片 -->
+                        <div class="traffic-compare-cards">
                           <div 
                             v-for="type in trafficTypes" 
                             :key="type.value"
-                            class="tab-item"
+                            class="traffic-card"
                             :class="{ 'active': currentTrafficType === type.value }"
                             @click="switchTrafficType(type.value)"
                           >
-                            {{ type.label }}
+                            <div class="card-header">
+                              <i :class="getTrafficIcon(type.value)"></i>
+                              <span class="type-name">{{ type.label }}</span>
+                            </div>
+                            <transition name="fade-slide">
+                              <div v-if="currentTrafficData && getTrafficTypeData(type.value)" class="card-body">
+                                <div class="info-item">
+                                  <span class="info-label">里程</span>
+                                  <span class="info-value">{{ getTrafficTypeData(type.value).distance }}km</span>
+                                </div>
+                                <div class="info-item">
+                                  <span class="info-label">耗时</span>
+                                  <span class="info-value">{{ getTrafficTypeData(type.value).time }}分钟</span>
+                                </div>
+                                <div class="info-item">
+                                  <span class="info-label">费用</span>
+                                  <span class="info-value price">￥{{ getTrafficTypeData(type.value).cost }}</span>
+                                </div>
+                              </div>
+                            </transition>
                           </div>
                         </div>
 
@@ -192,32 +212,42 @@
                           <span>加载中...</span>
                         </div>
 
-                        <div v-else-if="currentTrafficData" class="traffic-info">
-                          <div class="info-row">
-                            <span class="label">里程：</span>
-                            <span class="value">{{ currentTrafficData.distance }}km</span>
+                        <!-- 当前选中交通方式的详细信息 -->
+                        <transition v-else-if="currentTrafficData" name="fade-in">
+                          <div class="traffic-detail-info">
+                            <div class="detail-row">
+                              <span class="label"><i class="el-icon-map-location"></i>里程：</span>
+                              <span class="value">{{ currentTrafficData.distance }}km</span>
+                            </div>
+                            <div class="detail-row">
+                              <span class="label"><i class="el-icon-time"></i>耗时：</span>
+                              <span class="value">{{ currentTrafficData.duration }}</span>
+                            </div>
+                            <div class="detail-row">
+                              <span class="label"><i class="el-icon-wallet"></i>预估费用：</span>
+                              <span class="value">￥{{ currentTrafficData.cost }}</span>
+                            </div>
+                            
+                            <!-- 导航按钮组 -->
+                            <div class="navigation-actions">
+                              <el-button 
+                                type="primary" 
+                                icon="el-icon-location" 
+                                @click="openAmapNavigation"
+                                class="nav-btn"
+                              >
+                                打开高德地图导航
+                              </el-button>
+                              <el-button 
+                                icon="el-icon-document-copy" 
+                                @click="copyRouteAddress"
+                                class="copy-btn"
+                              >
+                                复制起点/终点
+                              </el-button>
+                            </div>
                           </div>
-                          <div class="info-row">
-                            <span class="label">耗时：</span>
-                            <span class="value">{{ currentTrafficData.duration }}</span>
-                          </div>
-                          <div class="info-row">
-                            <span class="label">预估费用：</span>
-                            <span class="value">￥{{ currentTrafficData.cost }}</span>
-                          </div>
-                          
-                          <!-- 高德地图导航按钮 - 替换原来的路线说明 -->
-                          <div class="info-row navigation-row">
-                            <el-button 
-                              type="primary" 
-                              icon="el-icon-location" 
-                              @click="openAmapNavigation"
-                              class="nav-btn"
-                            >
-                              打开高德地图导航
-                            </el-button>
-                          </div>
-                        </div>
+                        </transition>
 
                         <el-empty v-else description="暂无交通信息" :image-size="60"></el-empty>
                       </div>
@@ -233,16 +263,19 @@
 
                       <!-- 沿途特色小吃推荐（选中景点后显示） -->
                       <div v-if="selectedAttractionId && foodShops" class="food-section">
-                        <div class="section-subtitle">沿途特色小吃</div>
+                        <div class="section-subtitle">
+                          <i class="el-icon-food"></i>
+                          沿途特色小吃
+                        </div>
                         
                         <div v-if="foodLoading" class="loading-container">
                           <i class="el-icon-loading"></i>
                           <span>加载中...</span>
                         </div>
 
-                        <div v-else-if="foodShops.length > 0" class="food-list">
+                        <div v-else-if="displayedFoodShops.length > 0" class="food-list">
                           <div 
-                            v-for="shop in foodShops" 
+                            v-for="shop in displayedFoodShops" 
                             :key="shop.id" 
                             class="food-card"
                             @click="goToFoodDetail(shop.foodId)"
@@ -259,10 +292,19 @@
                               </div>
                             </div>
                             <div class="food-info">
-                              <div class="shop-name">{{ shop.name }}</div>
+                              <div class="shop-header">
+                                <div class="shop-name">{{ shop.name }}</div>
+                                <div v-if="shop.businessStatus" class="business-status" :class="shop.businessStatus === '营业中' ? 'open' : 'closed'">
+                                  {{ shop.businessStatus }}
+                                </div>
+                              </div>
                               <div class="shop-address">
                                 <i class="el-icon-location-outline"></i>
                                 {{ shop.address }}
+                              </div>
+                              <div v-if="shop.recommendReason" class="recommend-reason">
+                                <i class="el-icon-star-on"></i>
+                                {{ shop.recommendReason }}
                               </div>
                               <div class="shop-meta">
                                 <span class="meta-item">
@@ -274,11 +316,33 @@
                                   <span class="meta-value">{{ shop.distance }}km</span>
                                 </span>
                               </div>
+                              <div v-if="shop.convenienceIndex" class="convenience-index">
+                                <span class="index-label">顺路指数：</span>
+                                <div class="stars">
+                                  <i v-for="n in 5" :key="n" class="el-icon-star-on" :class="{ 'active': n <= shop.convenienceIndex }"></i>
+                                </div>
+                              </div>
+                              <div v-if="shop.businessHours" class="business-hours">
+                                <i class="el-icon-time"></i>
+                                {{ shop.businessHours }}
+                              </div>
                             </div>
                           </div>
                         </div>
 
                         <el-empty v-else description="暂无推荐小吃" :image-size="60"></el-empty>
+                        
+                        <!-- 查看更多按钮 -->
+                        <div v-if="foodShops.length > 4" class="show-more-wrapper">
+                          <el-button 
+                            type="text" 
+                            @click="toggleShowAllFoodShops"
+                            class="show-more-btn"
+                          >
+                            {{ showAllFoodShops ? '收起' : '查看更多沿途小吃' }}
+                            <i :class="showAllFoodShops ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
+                          </el-button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -391,7 +455,10 @@ export default {
       startMarker: null, // 起点标记
       endMarker: null, // 终点标记
       foodMarkers: [], // 小吃店标记数组
-      mapLoading: true // 地图加载状态
+      mapLoading: true, // 地图加载状态
+      showAllFoodShops: false, // 是否显示所有小吃
+      mapInitialized: false, // 地图是否已初始化
+      mapObserver: null // Intersection Observer 实例
     };
   },
   computed: {
@@ -431,6 +498,11 @@ export default {
         cost: trafficTypeData.cost,
         polyline: trafficTypeData.polyline // 添加 polyline 字段
       };
+    },
+    // 显示的小吃列表（默认显示前4个）
+    displayedFoodShops() {
+      if (!this.foodShops || this.foodShops.length === 0) return [];
+      return this.showAllFoodShops ? this.foodShops : this.foodShops.slice(0, 4);
     }
   },
   watch: {
@@ -644,7 +716,8 @@ export default {
       try {
         const params = {
           fromAttractionId: this.$route.query.id,
-          toAttractionId: item.id
+          toAttractionId: item.id,
+          transportType: 'all' // 获取所有交通方式
         };
         
         const res = await getTrafficInfo(params);
@@ -685,7 +758,14 @@ export default {
         };
         const res = await getNearFoodShop(params);
         if (res.code === 200) {
-          this.foodShops = res.data || [];
+          let shops = res.data || [];
+          // 按顺路指数降序排序（优先展示离路线近的）
+          shops.sort((a, b) => {
+            const indexA = a.convenienceIndex || 0;
+            const indexB = b.convenienceIndex || 0;
+            return indexB - indexA; // 降序
+          });
+          this.foodShops = shops;
         }
       } catch (error) {
         console.error('加载小吃信息失败:', error);
@@ -763,6 +843,70 @@ export default {
       } else {
         this.$message.success('正在打开高德地图导航...');
       }
+    },
+    // 复制起点/终点地址
+    copyRouteAddress() {
+      const fromAttraction = this.detail;
+      const toAttraction = this.nextAttractions.find(a => a.id === this.selectedAttractionId);
+      
+      if (!fromAttraction || !toAttraction) {
+        this.$message.error('景点信息不完整');
+        return;
+      }
+      
+      const text = `起点：${fromAttraction.attractionName}（${fromAttraction.attractionPlace}）\n终点：${toAttraction.attractionName}（${toAttraction.attractionPlace}）`;
+      
+      // 使用 Clipboard API
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          this.$message.success('复制成功！');
+        }).catch(() => {
+          this.fallbackCopyText(text);
+        });
+      } else {
+        this.fallbackCopyText(text);
+      }
+    },
+    // 降级复制方案
+    fallbackCopyText(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        this.$message.success('复制成功！');
+      } catch (err) {
+        this.$message.error('复制失败，请手动复制');
+      }
+      document.body.removeChild(textarea);
+    },
+    // 获取交通方式图标
+    getTrafficIcon(type) {
+      const iconMap = {
+        drive: 'el-icon-position',
+        bus: 'el-icon-guide',
+        taxi: 'el-icon-truck'
+      };
+      return iconMap[type] || 'el-icon-location';
+    },
+    // 获取指定交通方式的数据
+    getTrafficTypeData(type) {
+      if (!this.trafficInfo || !this.trafficInfo[type]) {
+        return null;
+      }
+      const data = this.trafficInfo[type];
+      return {
+        distance: this.trafficInfo.distance,
+        time: data.time,
+        cost: data.cost
+      };
+    },
+    // 切换显示所有小吃
+    toggleShowAllFoodShops() {
+      this.showAllFoodShops = !this.showAllFoodShops;
     },
     // 初始化高德地图
     initAMap() {
@@ -1495,43 +1639,102 @@ $dark-text: #1a2b49;
     background: #f9fafb;
     border-radius: 12px;
 
-    .traffic-tabs {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
+    // 横向对比卡片
+    .traffic-compare-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
 
-      .tab-item {
-        flex: 1;
-        padding: 10px;
-        text-align: center;
+      .traffic-card {
         background: #fff;
-        border: 1px solid #e8e8e8;
-        border-radius: 8px;
+        border: 2px solid #e8e8e8;
+        border-radius: 12px;
+        padding: 16px;
         cursor: pointer;
-        transition: all 0.3s;
-        font-size: 14px;
-        color: #666;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
 
         &:hover {
-          border-color: $theme-color;
-          color: $theme-color;
+          transform: translateY(-4px);
+          box-shadow: 0 8px 16px rgba(255, 138, 69, 0.15);
+          border-color: lighten($theme-color, 20%);
         }
 
         &.active {
-          background: $theme-color;
           border-color: $theme-color;
-          color: #fff;
-          font-weight: bold;
+          background: linear-gradient(135deg, #fff 0%, lighten($theme-color, 45%) 100%);
+          box-shadow: 0 8px 20px rgba(255, 138, 69, 0.25);
+
+          .card-header {
+            .type-name {
+              color: $theme-color;
+            }
+          }
+        }
+
+        .card-header {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin-bottom: 12px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #f0f0f0;
+
+          i {
+            font-size: 20px;
+            color: $theme-color;
+          }
+
+          .type-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            transition: color 0.3s;
+          }
+        }
+
+        .card-body {
+          .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 13px;
+
+            .info-label {
+              color: #999;
+            }
+
+            .info-value {
+              color: #333;
+              font-weight: 600;
+
+              &.price {
+                color: $theme-color;
+                font-size: 15px;
+              }
+            }
+          }
         }
       }
     }
 
-    .traffic-info {
-      .info-row {
+    // 详细信息区域
+    .traffic-detail-info {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 16px;
+
+      .detail-row {
         display: flex;
         padding: 12px 0;
         border-bottom: 1px dashed #e8e8e8;
         font-size: 14px;
+        align-items: flex-start;
 
         &:last-child {
           border-bottom: none;
@@ -1539,18 +1742,87 @@ $dark-text: #1a2b49;
 
         .label {
           color: #666;
-          min-width: 90px;
+          min-width: 110px;
           flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+
+          i {
+            color: $theme-color;
+            font-size: 16px;
+          }
         }
 
         .value {
           color: #333;
           flex: 1;
+          font-weight: 500;
+        }
+      }
+
+      // 导航按钮组
+      .navigation-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid #f0f0f0;
+
+        .nav-btn {
+          flex: 1;
+          height: 44px;
+          font-size: 15px;
+          font-weight: 500;
+          border-radius: 22px;
+          background: linear-gradient(135deg, $theme-color 0%, darken($theme-color, 10%) 100%);
+          border: none;
+          box-shadow: 0 4px 12px rgba(255, 138, 69, 0.3);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+          i {
+            font-size: 18px;
+            transition: transform 0.3s;
+          }
+
+          &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 138, 69, 0.4);
+            background: linear-gradient(135deg, darken($theme-color, 5%) 0%, darken($theme-color, 15%) 100%);
+
+            i {
+              transform: scale(1.2);
+            }
+          }
+
+          &:active {
+            transform: translateY(0);
+          }
         }
 
-        &.route-desc {
-          .value {
-            line-height: 1.6;
+        .copy-btn {
+          flex: 0 0 auto;
+          height: 44px;
+          padding: 0 20px;
+          border-radius: 22px;
+          border: 1px solid #dcdfe6;
+          background: #fff;
+          color: #606266;
+          transition: all 0.3s;
+
+          i {
+            font-size: 16px;
+            margin-right: 6px;
+          }
+
+          &:hover {
+            border-color: $theme-color;
+            color: $theme-color;
+            background: lighten($theme-color, 45%);
+          }
+
+          &:active {
+            transform: scale(0.98);
           }
         }
       }
@@ -1626,20 +1898,47 @@ $dark-text: #1a2b49;
           flex-direction: column;
           justify-content: space-between;
 
-          .shop-name {
-            font-size: 15px;
-            font-weight: bold;
-            color: #333;
+          .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 6px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+
+            .shop-name {
+              font-size: 15px;
+              font-weight: bold;
+              color: #333;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+              flex: 1;
+            }
+
+            .business-status {
+              flex-shrink: 0;
+              font-size: 11px;
+              padding: 2px 8px;
+              border-radius: 10px;
+              margin-left: 8px;
+
+              &.open {
+                background: #f0f9ff;
+                color: #52c41a;
+                border: 1px solid #b7eb8f;
+              }
+
+              &.closed {
+                background: #fff1f0;
+                color: #ff4d4f;
+                border: 1px solid #ffa39e;
+              }
+            }
           }
 
           .shop-address {
             font-size: 12px;
             color: #999;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -1649,10 +1948,27 @@ $dark-text: #1a2b49;
             }
           }
 
+          .recommend-reason {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: lighten($theme-color, 45%);
+            border-radius: 4px;
+            line-height: 1.4;
+
+            i {
+              color: $theme-color;
+              margin-right: 4px;
+              font-size: 12px;
+            }
+          }
+
           .shop-meta {
             display: flex;
             gap: 15px;
             font-size: 12px;
+            margin-bottom: 6px;
 
             .meta-item {
               .meta-label {
@@ -1663,6 +1979,43 @@ $dark-text: #1a2b49;
                 color: $theme-color;
                 font-weight: bold;
               }
+            }
+          }
+
+          .convenience-index {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            margin-bottom: 4px;
+
+            .index-label {
+              color: #999;
+            }
+
+            .stars {
+              display: flex;
+              gap: 2px;
+
+              i {
+                font-size: 12px;
+                color: #d9d9d9;
+
+                &.active {
+                  color: #faad14;
+                }
+              }
+            }
+          }
+
+          .business-hours {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+
+            i {
+              margin-right: 4px;
+              color: $theme-color;
             }
           }
         }
@@ -1742,5 +2095,28 @@ $dark-text: #1a2b49;
       }
     }
   }
+}
+
+// 过渡动画
+.fade-slide-enter-active, .fade-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-slide-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-in-enter-active, .fade-in-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-in-enter, .fade-in-leave-to {
+  opacity: 0;
 }
 </style>
