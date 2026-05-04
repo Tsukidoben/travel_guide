@@ -61,6 +61,24 @@ public class HotelInfo  extends Model<HotelInfo> {
     private String hotelService;
 
     /**
+     * 酒店地址
+     */
+    @TableField(value = "address")
+    private String address;
+
+    /**
+     * 经度
+     */
+    @TableField(value = "longitude")
+    private java.math.BigDecimal longitude;
+
+    /**
+     * 纬度
+     */
+    @TableField(value = "latitude")
+    private java.math.BigDecimal latitude;
+
+    /**
      * 创建人
      */
     @TableField(value = "creator", fill = FieldFill.INSERT)

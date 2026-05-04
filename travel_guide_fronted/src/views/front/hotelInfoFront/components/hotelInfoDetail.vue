@@ -88,6 +88,9 @@
 
             <div class="article-body">
               <h1 class="attr-title">{{ detail.htoelName }}</h1>
+              <div class="meta-info">
+                <span v-if="detail.address"><i class="el-icon-location-outline"></i> {{ detail.address }}</span>
+              </div>
               <div>
                 <div class="section-label">酒店介绍</div>
                 <div style="margin-bottom: 20px">

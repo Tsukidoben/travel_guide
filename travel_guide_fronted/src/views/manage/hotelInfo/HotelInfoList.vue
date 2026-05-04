@@ -23,6 +23,7 @@
               </template>
             </el-table-column>
             <el-table-column prop="htoelName" min-width="150" label="酒店名称"/>
+            <el-table-column prop="address" min-width="180" label="酒店地址"/>
             <el-table-column prop="hotelDesc" min-width="180" label="酒店介绍"/>
             <el-table-column prop="hotelDetail" min-width="180" label="酒店描述">
               <template #default="{row}">
