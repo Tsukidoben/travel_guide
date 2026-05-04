@@ -46,6 +46,7 @@ public class RouteServiceImpl implements RouteService {
 
     private static final String AMAP_DRIVING_URL = "https://restapi.amap.com/v3/direction/driving";
     private static final String AMAP_TRANSIT_URL = "https://restapi.amap.com/v3/direction/transit/integrated";
+    private static final String AMAP_WALKING_URL = "https://restapi.amap.com/v3/direction/walking";
 
     // 本地缓存（使用ConcurrentHashMap实现简单缓存）
     private static final Map<String, Object> CACHE = new ConcurrentHashMap<>();
@@ -239,9 +240,8 @@ public class RouteServiceImpl implements RouteService {
         driveInfo.put("polyline", "");
         result.put("drive", driveInfo);
 
-        // 公交
-        Map<String, Object> busInfo = buildEstimatedBusInfo();
-        result.put("bus", busInfo);
+        // 公交（返回 null，表示没有找到路线）
+        result.put("bus", null);
 
         // 打车
         Map<String, Object> taxiInfo = new HashMap<>();
@@ -275,29 +275,29 @@ public class RouteServiceImpl implements RouteService {
             params.put("output", "json");
             params.put("city", "贵阳");  // 设置城市，提高准确性
 
-            log.info("调用高德公交API：origin={}, destination={}", origin, destination);
+            // 调用公交API（静默处理）
             String response = HttpUtil.get(AMAP_TRANSIT_URL, params);
-            log.info("高德公交API响应(前500字符): {}", response.length() > 500 ? response.substring(0, 500) + "..." : response);
 
             // 解析响应数据
             JSONObject jsonResponse = JSONUtil.parseObj(response);
             String status = jsonResponse.getStr("status");
             
+            // 静默处理 API 调用失败
             if (!"1".equals(status)) {
-                log.warn("高德公交API调用失败：{}，使用估算数据", jsonResponse.getStr("info"));
-                return buildEstimatedBusInfo();
+                log.warn("高德公交 API 调用失败：{}", jsonResponse.getStr("info"));
+                return null;
             }
 
             JSONObject routeResult = jsonResponse.getJSONObject("route");
             if (routeResult == null) {
-                log.warn("高德公交API返回数据格式错误，使用估算数据");
-                return buildEstimatedBusInfo();
+                log.warn("高德公交 API 返回数据格式错误");
+                return null;
             }
 
             JSONArray transits = routeResult.getJSONArray("transits");
             if (transits == null || transits.isEmpty()) {
-                log.warn("高德公交API未返回路线数据，使用估算数据");
-                return buildEstimatedBusInfo();
+                log.info("高德公交 API 没有找到对应路线");
+                return null;
             }
 
             // 获取第一条路线（最优路线）
@@ -310,10 +310,25 @@ public class RouteServiceImpl implements RouteService {
             // 距离（米转千米）
             double distance = firstTransit.getDouble("distance", 0.0) / 1000.0;
             
-            // 费用（元）
-            double cost = firstTransit.getDouble("cost", 2.0);
-            if (cost <= 0) {
-                cost = 2.0;  // 默认2元
+            // 费用（元）- 高德API可能返回字符串或数字，也可能不返回
+            double cost = 2.0;  // 默认2元
+            Object costObj = firstTransit.get("cost");
+            if (costObj != null) {
+                try {
+                    // 尝试解析为数字
+                    if (costObj instanceof Number) {
+                        cost = ((Number) costObj).doubleValue();
+                    } else {
+                        // 如果是字符串，尝试解析
+                        cost = Double.parseDouble(costObj.toString());
+                    }
+                    // 如果费用为0或负数，使用默认值
+                    if (cost <= 0) {
+                        cost = 2.0;
+                    }
+                } catch (NumberFormatException e) {
+                    // 静默处理解析失败
+                }
             }
             
             busInfo.put("time", durationMinutes);
@@ -335,18 +350,13 @@ public class RouteServiceImpl implements RouteService {
             try {
                 String polyline = extractBusPolyline(firstTransit);
                 busInfo.put("polyline", polyline);
-                log.info("成功提取公交polyline，长度: {}", polyline.length());
             } catch (Exception e) {
-                log.warn("提取公交polyline失败", e);
                 busInfo.put("polyline", "");
             }
             
-            log.info("高德公交API返回 - 距离: {}km, 耗时: {}分钟, 费用: {}元", 
-                    distance, durationMinutes, cost);
-            
         } catch (Exception e) {
-            log.error("调用高德公交API异常，使用估算数据", e);
-            return buildEstimatedBusInfo();
+            log.error("获取公交路线信息异常", e);
+            return null;
         }
         
         return busInfo;
@@ -363,26 +373,42 @@ public class RouteServiceImpl implements RouteService {
         JSONArray segments = transit.getJSONArray("segments");
         if (segments != null && !segments.isEmpty()) {
             for (int i = 0; i < segments.size(); i++) {
-                JSONObject segment = segments.getJSONObject(i);
-                
-                // 提取公交站数
-                JSONObject bus = segment.getJSONObject("bus");
-                if (bus != null) {
-                    JSONArray buslines = bus.getJSONArray("buslines");
-                    if (buslines != null && !buslines.isEmpty()) {
-                        for (int j = 0; j < buslines.size(); j++) {
-                            JSONObject busline = buslines.getJSONObject(j);
-                            int stationCount = busline.getInt("via_stops_count", 0);
-                            totalStations += stationCount;
+                try {
+                    Object segmentObj = segments.get(i);
+                    
+                    // 跳过非 JSONObject 类型的数据
+                    if (!(segmentObj instanceof JSONObject)) {
+                        continue;
+                    }
+                    
+                    JSONObject segment = (JSONObject) segmentObj;
+                    
+                    // 提取公交站数
+                    Object busObj = segment.get("bus");
+                    if (busObj instanceof JSONObject) {
+                        JSONObject bus = (JSONObject) busObj;
+                        JSONArray buslines = bus.getJSONArray("buslines");
+                        if (buslines != null && !buslines.isEmpty()) {
+                            for (int j = 0; j < buslines.size(); j++) {
+                                Object buslineObj = buslines.get(j);
+                                if (buslineObj instanceof JSONObject) {
+                                    JSONObject busline = (JSONObject) buslineObj;
+                                    int stationCount = busline.getInt("via_stops_count", 0);
+                                    totalStations += stationCount;
+                                }
+                            }
                         }
                     }
-                }
-                
-                // 提取步行距离
-                JSONObject walking = segment.getJSONObject("walking");
-                if (walking != null) {
-                    double walkDist = walking.getDouble("distance", 0.0);
-                    totalWalkDistance += walkDist;
+                    
+                    // 提取步行距离
+                    Object walkingObj = segment.get("walking");
+                    if (walkingObj instanceof JSONObject) {
+                        JSONObject walking = (JSONObject) walkingObj;
+                        double walkDist = walking.getDouble("distance", 0.0);
+                        totalWalkDistance += walkDist;
+                    }
+                } catch (Exception e) {
+                    // 静默处理解析失败
                 }
             }
         }
@@ -394,55 +420,59 @@ public class RouteServiceImpl implements RouteService {
     }
 
     /**
-     * 构建估算的公交信息（备用方案）
-     */
-    private Map<String, Object> buildEstimatedBusInfo() {
-        Map<String, Object> busInfo = new HashMap<>();
-        busInfo.put("time", 30);  // 估算30分钟
-        busInfo.put("cost", 2.0);  // 固定2元
-        busInfo.put("busStationCount", 0);  // 无站数信息
-        busInfo.put("walkDistance", 0);  // 无步行距离
-        busInfo.put("description", "乘坐公交线路，可能需要换乘1-2次");
-        busInfo.put("polyline", "");  // 无路线数据
-        busInfo.put("steps", new ArrayList<>());  // 无步骤信息
-        return busInfo;
-    }
-
-    /**
-     * 构建公交路线描述
+     * 构建公交路线描述（返回完整路线信息）
      */
     private String buildBusRouteDescription(JSONObject transit) {
         StringBuilder description = new StringBuilder();
         JSONArray segments = transit.getJSONArray("segments");
         
         if (segments != null && !segments.isEmpty()) {
-            // 取前2个关键步骤作为描述
-            int maxSegments = Math.min(segments.size(), 2);
-            for (int i = 0; i < maxSegments; i++) {
-                JSONObject segment = segments.getJSONObject(i);
-                JSONObject bus = segment.getJSONObject("bus");
-                
-                if (bus != null) {
-                    String busName = bus.getStr("busline_name", "");
-                    if (ObjectUtil.isNotEmpty(busName)) {
-                        if (description.length() > 0) {
-                            description.append("→");
+            // 遍历所有步骤，返回完整路线描述
+            for (int i = 0; i < segments.size(); i++) {
+                try {
+                    Object segmentObj = segments.get(i);
+                    if (!(segmentObj instanceof JSONObject)) {
+                        continue;
+                    }
+                    JSONObject segment = (JSONObject) segmentObj;
+                    
+                    // 提取公交线路名称
+                    Object busObj = segment.get("bus");
+                    if (busObj instanceof JSONObject) {
+                        JSONObject bus = (JSONObject) busObj;
+                        JSONArray buslines = bus.getJSONArray("buslines");
+                        if (buslines != null && !buslines.isEmpty()) {
+                            for (int j = 0; j < buslines.size(); j++) {
+                                Object buslineObj = buslines.get(j);
+                                if (buslineObj instanceof JSONObject) {
+                                    String busName = ((JSONObject) buslineObj).getStr("name", "");
+                                    if (ObjectUtil.isNotEmpty(busName)) {
+                                        if (description.length() > 0) {
+                                            description.append(" > ");
+                                        }
+                                        description.append(busName);
+                                    }
+                                }
+                            }
                         }
-                        description.append(busName);
                     }
-                }
-                
-                // 如果有步行部分
-                JSONObject walking = segment.getJSONObject("walking");
-                if (walking != null) {
-                    String instruction = walking.getStr("instruction", "");
-                    if (ObjectUtil.isNotEmpty(instruction) && description.length() > 0) {
-                        description.append("→").append("步行");
+                    
+                    // 如果有步行部分，也添加到描述中
+                    Object walkingObj = segment.get("walking");
+                    if (walkingObj instanceof JSONObject) {
+                        JSONObject walking = (JSONObject) walkingObj;
+                        double walkDistance = walking.getDouble("distance", 0.0);
+                        if (walkDistance > 0) {
+                            int walkMeters = (int) walkDistance;
+                            if (description.length() > 0) {
+                                description.append(" > ");
+                            }
+                            description.append("步行").append(walkMeters).append("米");
+                        }
                     }
+                } catch (Exception e) {
+                    // 静默处理构建失败
                 }
-            }
-            if (segments.size() > 2) {
-                description.append("...");
             }
         } else {
             description.append("乘坐公交线路，可能需要换乘1-2次");
@@ -453,37 +483,118 @@ public class RouteServiceImpl implements RouteService {
 
     /**
      * 提取公交路线坐标串 polyline
+     * 注意：高德公交API返回的路线是沿着实际道路的真实路线
      */
     private String extractBusPolyline(JSONObject transit) {
         StringBuilder polyline = new StringBuilder();
         JSONArray segments = transit.getJSONArray("segments");
-        
+            
         if (segments != null && !segments.isEmpty()) {
             for (int i = 0; i < segments.size(); i++) {
-                JSONObject segment = segments.getJSONObject(i);
-                
-                // 提取公交路段的polyline
-                JSONObject bus = segment.getJSONObject("bus");
-                if (bus != null) {
-                    JSONArray buslines = bus.getJSONArray("buslines");
-                    if (buslines != null && !buslines.isEmpty()) {
-                        for (int j = 0; j < buslines.size(); j++) {
-                            JSONObject busline = buslines.getJSONObject(j);
-                            String stepPolyline = busline.getStr("polyline", "");
-                            
-                            if (ObjectUtil.isNotEmpty(stepPolyline)) {
-                                if (polyline.length() > 0) {
-                                    polyline.append(";");
-                                }
-                                polyline.append(stepPolyline);
+                try {
+                    Object segmentObj = segments.get(i);
+                    if (!(segmentObj instanceof JSONObject)) {
+                        continue;
+                    }
+                    JSONObject segment = (JSONObject) segmentObj;
+                        
+                    // 提取步行路段的 polyline
+                    Object walkingObj = segment.get("walking");
+                    if (walkingObj instanceof JSONObject) {
+                        JSONObject walking = (JSONObject) walkingObj;
+                        String walkPolyline = walking.getStr("polyline", "");
+                        
+                        // 如果 walking 没有 polyline，调用高德步行 API 获取真实路线
+                        if (ObjectUtil.isEmpty(walkPolyline)) {
+                            String origin = walking.getStr("origin", "");
+                            String destination = walking.getStr("destination", "");
+                            if (ObjectUtil.isNotEmpty(origin) && ObjectUtil.isNotEmpty(destination)) {
+                                walkPolyline = getWalkingPolylineFromAPI(origin, destination);
                             }
+                        }
+                        
+                        if (ObjectUtil.isNotEmpty(walkPolyline)) {
+                            if (polyline.length() > 0) {
+                                polyline.append(";");
+                            }
+                            polyline.append(walkPolyline);
+                        }
+                    }
+                        
+                    // 提取公交路段的 polyline
+                    Object busObj = segment.get("bus");
+                    if (busObj instanceof JSONObject) {
+                        JSONObject bus = (JSONObject) busObj;
+                        JSONArray buslines = bus.getJSONArray("buslines");
+                        
+                        if (buslines != null && !buslines.isEmpty()) {
+                            for (int j = 0; j < buslines.size(); j++) {
+                                Object buslineObj = buslines.get(j);
+                                if (buslineObj instanceof JSONObject) {
+                                    JSONObject busline = (JSONObject) buslineObj;
+                                    String stepPolyline = busline.getStr("polyline", "");
+                                    
+                                    // 检查是否与上一条 polyline 重复
+                                    if (ObjectUtil.isNotEmpty(stepPolyline)) {
+                                        String lastPolyline = polyline.length() > 0 ? polyline.toString() : "";
+                                        if (!lastPolyline.endsWith(stepPolyline)) {
+                                            if (polyline.length() > 0) {
+                                                polyline.append(";");
+                                            }
+                                            polyline.append(stepPolyline);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("提取公交 polyline segment[{}] 失败", i, e);
+                }
+            }
+        }
+            
+        return polyline.toString();
+    }
+
+    /**
+     * 调用高德步行 API 获取真实的步行路线坐标
+     * @param origin 起点坐标（经度,纬度）
+     * @param destination 终点坐标（经度,纬度）
+     * @return 步行路线 polyline
+     */
+    private String getWalkingPolylineFromAPI(String origin, String destination) {
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("key", amapKey);
+            params.put("origin", origin);
+            params.put("destination", destination);
+            params.put("output", "json");
+            
+            String response = HttpUtil.get(AMAP_WALKING_URL, params);
+            JSONObject jsonResponse = JSONUtil.parseObj(response);
+            String status = jsonResponse.getStr("status");
+            
+            if ("1".equals(status)) {
+                JSONObject routeResult = jsonResponse.getJSONObject("route");
+                if (routeResult != null) {
+                    JSONArray paths = routeResult.getJSONArray("paths");
+                    if (paths != null && !paths.isEmpty()) {
+                        // 获取第一条步行路线
+                        JSONObject firstPath = paths.getJSONObject(0);
+                        String walkPolyline = firstPath.getStr("polyline", "");
+                        if (ObjectUtil.isNotEmpty(walkPolyline)) {
+                            return walkPolyline;
                         }
                     }
                 }
             }
+        } catch (Exception e) {
+            log.warn("调用高德步行 API 失败", e);
         }
         
-        return polyline.toString();
+        // 如果调用失败，返回起点和终点的直线
+        return origin + ";" + destination;
     }
 
     /**
@@ -510,7 +621,7 @@ public class RouteServiceImpl implements RouteService {
     }
 
     /**
-     * 构建公交结构化步骤
+     * 构建公交结构化步骤（包含每个步骤的独立 polyline）
      */
     private List<Map<String, Object>> buildBusStructuredSteps(JSONObject transit) {
         List<Map<String, Object>> steps = new ArrayList<>();
@@ -519,45 +630,73 @@ public class RouteServiceImpl implements RouteService {
         if (segments != null && !segments.isEmpty()) {
             int stepNo = 1;
             for (int i = 0; i < segments.size(); i++) {
-                JSONObject segment = segments.getJSONObject(i);
-                
-                // 步行部分
-                JSONObject walking = segment.getJSONObject("walking");
-                if (walking != null) {
-                    String instruction = walking.getStr("instruction", "步行");
-                    double distance = walking.getDouble("distance", 0.0);
+                try {
+                    Object segmentObj = segments.get(i);
+                    if (!(segmentObj instanceof JSONObject)) {
+                        continue;
+                    }
+                    JSONObject segment = (JSONObject) segmentObj;
                     
-                    Map<String, Object> stepInfo = new HashMap<>();
-                    stepInfo.put("stepNo", stepNo++);
-                    stepInfo.put("instruction", instruction);
-                    stepInfo.put("distance", distance);
-                    stepInfo.put("type", "walking");
+                    // 步行部分
+                    Object walkingObj = segment.get("walking");
+                    if (walkingObj instanceof JSONObject) {
+                        JSONObject walking = (JSONObject) walkingObj;
+                        String instruction = walking.getStr("instruction", "步行");
+                        double distance = walking.getDouble("distance", 0.0);
+                        
+                        // 提取步行路段的 polyline
+                        String walkPolyline = walking.getStr("polyline", "");
+                        
+                        // 如果 walking 没有 polyline，调用高德步行 API 获取真实路线
+                        if (ObjectUtil.isEmpty(walkPolyline)) {
+                            String origin = walking.getStr("origin", "");
+                            String destination = walking.getStr("destination", "");
+                            if (ObjectUtil.isNotEmpty(origin) && ObjectUtil.isNotEmpty(destination)) {
+                                walkPolyline = getWalkingPolylineFromAPI(origin, destination);
+                            }
+                        }
+                        
+                        Map<String, Object> stepInfo = new HashMap<>();
+                        stepInfo.put("stepNo", stepNo++);
+                        stepInfo.put("instruction", instruction);
+                        stepInfo.put("distance", distance);
+                        stepInfo.put("type", "walking");
+                        stepInfo.put("polyline", walkPolyline);  // 添加步行段的独立 polyline
+                        
+                        steps.add(stepInfo);
+                    }
                     
-                    steps.add(stepInfo);
-                }
-                
-                // 公交部分
-                JSONObject bus = segment.getJSONObject("bus");
-                if (bus != null) {
-                    JSONArray buslines = bus.getJSONArray("buslines");
-                    if (buslines != null && !buslines.isEmpty()) {
-                        for (int j = 0; j < buslines.size(); j++) {
-                            JSONObject busline = buslines.getJSONObject(j);
-                            String busName = busline.getStr("name", "");
-                            int viaStops = busline.getInt("via_stops_count", 0);
-                            double distance = busline.getDouble("distance", 0.0);
-                            
-                            Map<String, Object> stepInfo = new HashMap<>();
-                            stepInfo.put("stepNo", stepNo++);
-                            stepInfo.put("instruction", busName + "（乘坐" + viaStops + "站）");
-                            stepInfo.put("distance", distance);
-                            stepInfo.put("type", "bus");
-                            stepInfo.put("busName", busName);
-                            stepInfo.put("stationCount", viaStops);
-                            
-                            steps.add(stepInfo);
+                    // 公交部分
+                    Object busObj = segment.get("bus");
+                    if (busObj instanceof JSONObject) {
+                        JSONObject bus = (JSONObject) busObj;
+                        JSONArray buslines = bus.getJSONArray("buslines");
+                        if (buslines != null && !buslines.isEmpty()) {
+                            for (int j = 0; j < buslines.size(); j++) {
+                                Object buslineObj = buslines.get(j);
+                                if (buslineObj instanceof JSONObject) {
+                                    JSONObject busline = (JSONObject) buslineObj;
+                                    String busName = busline.getStr("name", "");
+                                    int viaStops = busline.getInt("via_stops_count", 0);
+                                    double distance = busline.getDouble("distance", 0.0);
+                                    String busPolyline = busline.getStr("polyline", "");  // 公交段的独立 polyline
+                                    
+                                    Map<String, Object> stepInfo = new HashMap<>();
+                                    stepInfo.put("stepNo", stepNo++);
+                                    stepInfo.put("instruction", busName + "（乘坐" + viaStops + "站）");
+                                    stepInfo.put("distance", distance);
+                                    stepInfo.put("type", "bus");
+                                    stepInfo.put("busName", busName);
+                                    stepInfo.put("stationCount", viaStops);
+                                    stepInfo.put("polyline", busPolyline);  // 添加公交段的独立 polyline
+                                    
+                                    steps.add(stepInfo);
+                                }
+                            }
                         }
                     }
+                } catch (Exception e) {
+                    log.warn("构建公交步骤 segment[{}] 失败", i, e);
                 }
             }
         }
@@ -950,43 +1089,58 @@ public class RouteServiceImpl implements RouteService {
         JSONArray segments = transit.getJSONArray("segments");
         if (segments != null && !segments.isEmpty()) {
             for (int i = 0; i < segments.size(); i++) {
-                JSONObject segment = segments.getJSONObject(i);
-                
-                // 提取公交部分
-                JSONObject bus = segment.getJSONObject("bus");
-                if (bus != null) {
-                    JSONArray buslines = bus.getJSONArray("buslines");
-                    if (buslines != null && !buslines.isEmpty()) {
-                        for (int j = 0; j < buslines.size(); j++) {
-                            JSONObject busline = buslines.getJSONObject(j);
-                            
-                            // 提取途经站点
-                            JSONArray viaStops = busline.getJSONArray("via_stops");
-                            if (viaStops != null && !viaStops.isEmpty()) {
-                                for (int k = 0; k < viaStops.size(); k++) {
-                                    JSONObject stop = viaStops.getJSONObject(k);
-                                    Map<String, Object> marker = new HashMap<>();
-                                    marker.put("type", "bus_station");
-                                    marker.put("name", stop.getStr("name", ""));
+                try {
+                    Object segmentObj = segments.get(i);
+                    if (!(segmentObj instanceof JSONObject)) {
+                        continue;
+                    }
+                    JSONObject segment = (JSONObject) segmentObj;
+                    
+                    // 提取公交部分
+                    Object busObj = segment.get("bus");
+                    if (busObj instanceof JSONObject) {
+                        JSONObject bus = (JSONObject) busObj;
+                        JSONArray buslines = bus.getJSONArray("buslines");
+                        if (buslines != null && !buslines.isEmpty()) {
+                            for (int j = 0; j < buslines.size(); j++) {
+                                Object buslineObj = buslines.get(j);
+                                if (buslineObj instanceof JSONObject) {
+                                    JSONObject busline = (JSONObject) buslineObj;
                                     
-                                    String location = stop.getStr("location", "");
-                                    if (ObjectUtil.isNotEmpty(location)) {
-                                        String[] coords = location.split(",");
-                                        if (coords.length == 2) {
-                                            try {
-                                                marker.put("longitude", new BigDecimal(coords[0]));
-                                                marker.put("latitude", new BigDecimal(coords[1]));
-                                            } catch (Exception e) {
-                                                log.warn("解析公交站点坐标失败", e);
+                                    // 提取途经站点
+                                    JSONArray viaStops = busline.getJSONArray("via_stops");
+                                    if (viaStops != null && !viaStops.isEmpty()) {
+                                        for (int k = 0; k < viaStops.size(); k++) {
+                                            Object stopObj = viaStops.get(k);
+                                            if (stopObj instanceof JSONObject) {
+                                                JSONObject stop = (JSONObject) stopObj;
+                                                Map<String, Object> marker = new HashMap<>();
+                                                marker.put("type", "bus_station");
+                                                marker.put("name", stop.getStr("name", ""));
+                                                
+                                                String location = stop.getStr("location", "");
+                                                if (ObjectUtil.isNotEmpty(location)) {
+                                                    String[] coords = location.split(",");
+                                                    if (coords.length == 2) {
+                                                        try {
+                                                            marker.put("longitude", new BigDecimal(coords[0]));
+                                                            marker.put("latitude", new BigDecimal(coords[1]));
+                                                        } catch (Exception e) {
+                                                            log.warn("解析公交站点坐标失败", e);
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                markers.add(marker);
                                             }
                                         }
                                     }
-                                    
-                                    markers.add(marker);
                                 }
                             }
                         }
                     }
+                } catch (Exception e) {
+                    // 静默处理提取失败
                 }
             }
         }

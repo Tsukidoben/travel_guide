@@ -25,9 +25,9 @@
             <el-table-column prop="name" label="小吃名称" width="150"/>
             <el-table-column prop="categoryName" label="分类" width="100"/>
             <el-table-column prop="shopName" label="店铺" width="150"/>
-            <el-table-column prop="score" label="评分" width="100">
+            <el-table-column prop="score" label="评分" width="160">
               <template #default="{row}">
-                <el-rate v-model="row.score" disabled show-score text-color="#ff9900"></el-rate>
+                <el-rate :value="parseFloat(row.score)" disabled text-color="#ff9900" :max="5"></el-rate>
               </template>
             </el-table-column>
             <el-table-column prop="avgPrice" label="人均" width="80">

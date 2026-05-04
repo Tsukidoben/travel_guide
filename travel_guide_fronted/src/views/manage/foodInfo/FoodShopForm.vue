@@ -36,6 +36,15 @@
               <el-option label="全天营业" value="全天营业"></el-option>
             </el-select>
           </el-form-item>
+          <el-form-item prop="businessStatus" label="营业状态">
+            <el-select v-model="formData.businessStatus" placeholder="请选择营业状态" style="width: 100%" clearable>
+              <el-option label="营业中" value="营业中"></el-option>
+              <el-option label="装修中" value="装修中"></el-option>
+              <el-option label="已关闭" value="已关闭"></el-option>
+              <el-option label="暂停营业" value="暂停营业"></el-option>
+            </el-select>
+          </el-form-item>
+
         </el-form>
       </template>
       <template #footer>
@@ -66,6 +75,7 @@ export default {
         phone: '',
         avgPrice: 0,
         businessHours: '',
+        businessStatus: '',
         longitude: '',
         latitude: ''
       },
@@ -88,6 +98,7 @@ export default {
         phone: '',
         avgPrice: 0,
         businessHours: '',
+        businessStatus: '',
         longitude: '',
         latitude: ''
       };

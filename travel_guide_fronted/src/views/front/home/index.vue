@@ -199,7 +199,18 @@ export default {
     },
     getAttraction(){
       request({
-        url: config.backHost + "/attractionInfo/recommend"
+        url: config.backHost + "/attractionInfo/recommend",
+        method: 'POST',
+        data: {
+          params: {
+            sortBy: 'viewCount',  // 按浏览量排序
+            sortOrder: 'desc'     // 降序排列
+          },
+          pageBean: {
+            page: 1,
+            pageSize: 10  // 固定数量
+          }
+        }
       }).then(res => {
         if (res.code == 200) {
           this.spotList = res.data

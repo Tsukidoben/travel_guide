@@ -84,12 +84,6 @@ public class FoodShop extends Model<FoodShop> {
     private String images;
 
     /**
-     * 店铺简介
-     */
-    @TableField(value = "description")
-    private String description;
-
-    /**
      * 创建时间
      */
     @TableField(value = "create_time", fill = FieldFill.INSERT)

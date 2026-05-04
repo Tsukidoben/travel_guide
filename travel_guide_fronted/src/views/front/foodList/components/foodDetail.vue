@@ -173,6 +173,17 @@
                 <span class="item-value price">¥{{ shopInfo.avgPrice }}/人</span>
               </div>
             </div>
+            <div class="shop-item" v-if="shopInfo.businessStatus">
+              <div class="item-icon">
+                <i class="el-icon-flag"></i>
+              </div>
+              <div class="item-content">
+                <span class="item-label">营业状态：</span>
+                <el-tag :type="getStatusType(shopInfo.businessStatus)" size="medium">
+                  {{ shopInfo.businessStatus }}
+                </el-tag>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -385,7 +396,8 @@ export default {
               address: this.foodDetail.foodShop.address,
               phone: this.foodDetail.foodShop.phone,
               avgPrice: this.foodDetail.foodShop.avgPrice,
-              businessHours: this.foodDetail.foodShop.businessHours
+              businessHours: this.foodDetail.foodShop.businessHours,
+              businessStatus: this.foodDetail.foodShop.businessStatus
             };
           } else {
             // 否则使用单独查询的结果
@@ -396,7 +408,8 @@ export default {
               address: data.address,
               phone: data.phone,
               avgPrice: data.avgPrice,
-              businessHours: data.businessHours
+              businessHours: data.businessHours,
+              businessStatus: data.businessStatus
             };
           }
         }
@@ -571,6 +584,17 @@ export default {
     handleCommentPageChange(page) {
       this.commentPageNum = page;
       this.getComments();
+    },
+    
+    // 获取营业状态标签类型
+    getStatusType(status) {
+      const typeMap = {
+        '营业中': 'success',
+        '装修中': 'warning',
+        '已关闭': 'danger',
+        '暂停营业': 'info'
+      };
+      return typeMap[status] || 'info';
     }
   }
 }

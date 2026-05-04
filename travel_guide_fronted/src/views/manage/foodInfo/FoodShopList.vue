@@ -31,6 +31,13 @@
               </template>
             </el-table-column>
             <el-table-column prop="businessHours" label="营业时间" width="150"/>
+            <el-table-column prop="businessStatus" label="营业状态" width="120">
+              <template #default="{row}">
+                <el-tag :type="getStatusType(row.businessStatus)" size="small">
+                  {{ row.businessStatus || '未知' }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column fixed="right" v-if="userRole == '1'" label="操作" width="150">
               <template #default="{ row }">
                 <span v-if="userRole == '1'" class="span-button" @click="openForm('edit', '编辑店铺', row)">编辑</span>
@@ -89,6 +96,16 @@ export default {
   },
   methods: {
     initData(){
+    },
+    // 获取营业状态标签类型
+    getStatusType(status) {
+      const typeMap = {
+        '营业中': 'success',
+        '装修中': 'warning',
+        '已关闭': 'danger',
+        '暂停营业': 'info'
+      };
+      return typeMap[status] || 'info';
     },
     query(searchForm, pageBean) {
       request({

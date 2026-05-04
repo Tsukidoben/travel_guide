@@ -81,7 +81,7 @@ public class TicketInfoServiceImpl extends ServiceImpl<TicketInfoMapper, TicketI
         wrapper
             .like(ObjectUtil.isNotEmpty(params.getTicketName()), TicketInfo::getTicketName, params.getTicketName())
             .eq(ObjectUtil.isNotEmpty(params.getAttractionId()), TicketInfo::getAttractionId, params.getAttractionId())
-;
+            .eq(ObjectUtil.isNotEmpty(params.getStatus()), TicketInfo::getStatus, params.getStatus());
 
         // 排序
         wrapper.orderByDesc(TicketInfo::getCreateTime);
@@ -112,6 +112,7 @@ public class TicketInfoServiceImpl extends ServiceImpl<TicketInfoMapper, TicketI
     public List<TicketInfo> getByAttractionId(String attractionId) {
         return this.lambdaQuery()
                 .eq(TicketInfo::getAttractionId, attractionId)
+                .eq(TicketInfo::getStatus, "1")  // 只查询上架状态的门票
                 .orderByAsc(TicketInfo::getTicketPrice)
                 .list();
     }

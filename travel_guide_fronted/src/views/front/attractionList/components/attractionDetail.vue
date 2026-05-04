@@ -228,6 +228,36 @@
                               <span class="value">￥{{ currentTrafficData.cost }}</span>
                             </div>
                             
+                            <!-- 公交路线详情 -->
+                            <div v-if="currentTrafficType === 'bus'" class="route-description" v-loading="trafficLoading">
+                              <!-- 没有找到公交路线 -->
+                              <div v-if="hasNoBusRoute" class="no-route-message">
+                                <i class="el-icon-warning-outline"></i>
+                                <div class="message-text">抱歉，没有找到对应线路</div>
+                              </div>
+                              <!-- 有公交路线 -->
+                              <template v-else>
+                                <div class="route-title">
+                                  <i class="el-icon-guide"></i>
+                                  公交路线
+                                </div>
+                                <div class="route-content" :class="{ 'collapsed': !showFullRoute }">
+                                  {{ currentTrafficData.routeDescription }}
+                                </div>
+                                <div class="route-toggle">
+                                  <el-button 
+                                    type="text" 
+                                    size="mini" 
+                                    @click="toggleRouteExpand"
+                                    class="toggle-btn"
+                                  >
+                                    {{ showFullRoute ? '收起' : '展开详情' }}
+                                    <i :class="showFullRoute ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
+                                  </el-button>
+                                </div>
+                              </template>
+                            </div>
+                            
                             <!-- 导航按钮组 -->
                             <div class="navigation-actions">
                               <el-button 
@@ -451,14 +481,16 @@ export default {
         { label: '打车', value: 'taxi' }
       ],
       mapInstance: null, // 高德地图实例
-      polylineInstance: null, // 路线覆盖物实例
+      polylineInstance: null, // 路线覆盖物实例（旧版兼容）
+      polylineInstances: [], // 多段路线覆盖物实例（公交分段绘制）
       startMarker: null, // 起点标记
       endMarker: null, // 终点标记
       foodMarkers: [], // 小吃店标记数组
       mapLoading: true, // 地图加载状态
       showAllFoodShops: false, // 是否显示所有小吃
       mapInitialized: false, // 地图是否已初始化
-      mapObserver: null // Intersection Observer 实例
+      mapObserver: null, // Intersection Observer 实例
+      showFullRoute: false // 是否显示完整公交路线
     };
   },
   computed: {
@@ -487,6 +519,19 @@ export default {
       
       // 获取当前交通方式的数据（drive/bus/taxi）
       const trafficTypeData = this.trafficInfo[this.currentTrafficType];
+      
+      // 特殊处理：公交模式即使没有数据也要返回对象，以便显示"没有找到线路"提示
+      if (this.currentTrafficType === 'bus') {
+        return {
+          distance: this.trafficInfo.distance || 0,
+          duration: trafficTypeData ? `${trafficTypeData.time}分钟` : '-',
+          cost: trafficTypeData ? trafficTypeData.cost : 0,
+          polyline: trafficTypeData ? trafficTypeData.polyline : null,
+          routeDescription: trafficTypeData ? (trafficTypeData.description || '') : ''
+        };
+      }
+      
+      // 其他交通方式：没有数据则返回 null
       if (!trafficTypeData) {
         return null;
       }
@@ -496,8 +541,16 @@ export default {
         distance: this.trafficInfo.distance,
         duration: `${trafficTypeData.time}分钟`,
         cost: trafficTypeData.cost,
-        polyline: trafficTypeData.polyline // 添加 polyline 字段
+        polyline: trafficTypeData.polyline, // 添加 polyline 字段
+        routeDescription: trafficTypeData.description || '' // 添加路线描述字段
       };
+    },
+    // 判断公交模式是否没有路线
+    hasNoBusRoute() {
+      if (this.currentTrafficType !== 'bus') return false;
+      if (!this.trafficInfo || !this.trafficInfo.bus) return true;
+      // 如果没有 polyline 或 routeDescription，说明没有公交路线
+      return !this.trafficInfo.bus.polyline && !this.trafficInfo.bus.description;
     },
     // 显示的小吃列表（默认显示前4个）
     displayedFoodShops() {
@@ -548,7 +601,15 @@ export default {
       });
       this.foodMarkers = [];
       
-      // 再清理其他标记
+      // 清理多段路线
+      if (this.polylineInstances && this.polylineInstances.length > 0) {
+        this.polylineInstances.forEach(line => {
+          this.mapInstance.remove(line);
+        });
+        this.polylineInstances = [];
+      }
+      
+      // 清理旧版单条路线
       if (this.polylineInstance) {
         this.mapInstance.remove(this.polylineInstance);
       }
@@ -563,6 +624,7 @@ export default {
       this.mapInstance.destroy();
       this.mapInstance = null;
       this.polylineInstance = null;
+      this.polylineInstances = [];
       this.startMarker = null;
       this.endMarker = null;
     }
@@ -635,7 +697,10 @@ export default {
         url: config.backHost + "/ticketInfo/listPage",
         method: "POST",
         data: {
-          params: { attractionId: id },
+          params: { 
+            attractionId: id,
+            status: 1  // 只查询上架的门票（1=上架，2=下架）
+          },
           pageBean: { page: 1, pageSize: -1 }
         }
       });
@@ -719,9 +784,9 @@ export default {
           toAttractionId: item.id,
           transportType: 'all' // 获取所有交通方式
         };
-        
+            
         const res = await getTrafficInfo(params);
-        
+            
         if (res.code === 200 && res.data && Object.keys(res.data).length > 0) {
           const data = res.data;
           this.trafficInfo = {
@@ -730,8 +795,16 @@ export default {
             bus: data.bus || null,
             taxi: data.taxi || null
           };
-          
-          // 加载完成后，自动绘制地图（无论有没有polyline数据）
+              
+          // 调试信息：打印公交 polyline
+          if (data.bus && data.bus.polyline) {
+            console.log('公交 polyline 原始数据:', data.bus.polyline);
+            console.log('公交 polyline 长度:', data.bus.polyline.length);
+          } else {
+            console.warn('公交 polyline 数据为空');
+          }
+              
+          // 加载完成后，自动绘制地图（无论有没有 polyline 数据）
           setTimeout(() => {
             const polyline = this.currentTrafficData ? this.currentTrafficData.polyline : null;
             this.drawRouteOnMap(polyline);
@@ -894,10 +967,26 @@ export default {
     },
     // 获取指定交通方式的数据
     getTrafficTypeData(type) {
-      if (!this.trafficInfo || !this.trafficInfo[type]) {
+      if (!this.trafficInfo) {
         return null;
       }
+      
       const data = this.trafficInfo[type];
+      
+      // 特殊处理：公交模式即使没有数据也要返回对象
+      if (type === 'bus') {
+        return {
+          distance: this.trafficInfo.distance || 0,
+          time: data ? data.time : '-',
+          cost: data ? data.cost : 0
+        };
+      }
+      
+      // 其他交通方式：没有数据则返回 null
+      if (!data) {
+        return null;
+      }
+      
       return {
         distance: this.trafficInfo.distance,
         time: data.time,
@@ -907,6 +996,10 @@ export default {
     // 切换显示所有小吃
     toggleShowAllFoodShops() {
       this.showAllFoodShops = !this.showAllFoodShops;
+    },
+    // 切换公交路线展开/收起
+    toggleRouteExpand() {
+      this.showFullRoute = !this.showFullRoute;
     },
     // 初始化高德地图
     initAMap() {
@@ -1023,29 +1116,91 @@ export default {
         
         this.startMarker = new AMap.Marker({
           position: path.length > 0 ? path[0] : startPoint,
-          icon: new AMap.Icon({
-            size: new AMap.Size(25, 34),
-            image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png',
-            imageSize: new AMap.Size(25, 34)
-          }),
-          offset: new AMap.Pixel(-13, -30),
+          content: `<div style="
+            width: 26px;
+            height: 26px;
+            background: #3b82f6;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+          ">起</div>`,
+          offset: new AMap.Pixel(-13, -13),
           title: '起点'
         });
         
         this.endMarker = new AMap.Marker({
           position: path.length > 0 ? path[path.length - 1] : endPoint,
-          icon: new AMap.Icon({
-            size: new AMap.Size(25, 34),
-            image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png',
-            imageSize: new AMap.Size(25, 34)
-          }),
-          offset: new AMap.Pixel(-13, -30),
+          content: `<div style="
+            width: 26px;
+            height: 26px;
+            background: #ef4444;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+          ">终</div>`,
+          offset: new AMap.Pixel(-13, -13),
           title: '终点'
         });
         
         this.mapInstance.add([this.startMarker, this.endMarker]);
         
-        if (path.length > 1) {
+        // 清除旧路线
+        if (this.polylineInstance) {
+          this.mapInstance.remove(this.polylineInstance);
+          this.polylineInstance = null;
+        }
+        if (this.polylineInstances && this.polylineInstances.length > 0) {
+          this.polylineInstances.forEach(line => this.mapInstance.remove(line));
+          this.polylineInstances = [];
+        }
+        
+        let routes = [];
+        
+        // 如果是公交模式且有步骤数据，尝试分段绘制
+        if (this.currentTrafficType === 'bus' && this.trafficInfo.bus && this.trafficInfo.bus.steps) {
+          console.log('开始分段绘制公交路线，步骤数量:', this.trafficInfo.bus.steps.length);
+          
+          this.trafficInfo.bus.steps.forEach((step, index) => {
+            if (step.polyline) {
+              const points = this.parsePolyline(step.polyline);
+              if (points.length > 1) {
+                const isWalking = step.type === 'walking';
+                const line = new AMap.Polyline({
+                  path: points,
+                  strokeColor: isWalking ? '#999999' : '#1890FF', // 步行灰，公交蓝
+                  strokeWeight: isWalking ? 4 : 6,
+                  strokeOpacity: 0.8,
+                  strokeStyle: isWalking ? 'dashed' : 'solid',    // 步行虚线，公交实线
+                  strokeDasharray: isWalking ? [10, 5] : null,
+                  lineJoin: 'round',
+                  lineCap: 'round'
+                });
+                routes.push(line);
+                console.log(`步骤 ${index + 1} (${step.type}): ${points.length} 个坐标点`);
+              }
+            } else {
+              console.warn(`步骤 ${index + 1} 缺少 polyline 数据`);
+            }
+          });
+        }
+        
+        // 如果没有分段数据，或者不是公交模式，绘制单条路线
+        if (routes.length === 0 && path.length > 1) {
+          console.log('降级：绘制单条路线');
           let routeColor = '#FF8A45';
           if (this.currentTrafficType === 'bus') {
             routeColor = '#1890FF';
@@ -1053,7 +1208,7 @@ export default {
             routeColor = '#52C41A';
           }
           
-          this.polylineInstance = new AMap.Polyline({
+          const line = new AMap.Polyline({
             path: path,
             strokeColor: routeColor,
             strokeWeight: 6,
@@ -1062,10 +1217,16 @@ export default {
             lineJoin: 'round',
             lineCap: 'round'
           });
+          routes.push(line);
+        }
+        
+        // 添加到地图
+        if (routes.length > 0) {
+          this.mapInstance.add(routes);
+          this.polylineInstances = routes;
+          console.log('总共绘制了', routes.length, '条路线段');
           
-          this.mapInstance.add(this.polylineInstance);
-          
-          const fitViewElements = [this.startMarker, this.endMarker, this.polylineInstance];
+          const fitViewElements = [this.startMarker, this.endMarker, ...routes];
           
           if (this.foodShops && this.foodShops.length > 0) {
             this.drawFoodMarkers(this.foodShops);
@@ -1074,6 +1235,7 @@ export default {
           
           this.mapInstance.setFitView(fitViewElements);
         } else {
+          console.error('没有有效的路线数据可绘制');
           this.mapInstance.setFitView([this.startMarker, this.endMarker]);
         }
         
@@ -1103,13 +1265,20 @@ export default {
       if (!polylineStr) return [];
       
       try {
+        // 调试信息：打印原始 polyline 数据
+        console.log('原始 polyline 数据:', polylineStr);
+        console.log('polyline 类型:', typeof polylineStr);
+        console.log('polyline 长度:', polylineStr.length);
+        
         // polyline 可能是 JSON 字符串或分号分隔的字符串
         let points = [];
         if (typeof polylineStr === 'string') {
           // 尝试解析 JSON
           if (polylineStr.startsWith('[')) {
+            console.log('检测到 JSON 格式');
             points = JSON.parse(polylineStr);
           } else {
+            console.log('检测到分号分隔格式');
             // 分号分隔格式: "lng,lat;lng,lat"
             points = polylineStr.split(';').map(point => {
               const [lng, lat] = point.split(',').map(Number);
@@ -1118,7 +1287,15 @@ export default {
           }
         }
         
-        return points.filter(p => !isNaN(p[0]) && !isNaN(p[1]));
+        // 调试信息：打印解析结果
+        console.log('解析后的坐标点数量:', points.length);
+        console.log('前 3 个坐标点:', points.slice(0, 3));
+        console.log('后 3 个坐标点:', points.slice(-3));
+        
+        const validPoints = points.filter(p => !isNaN(p[0]) && !isNaN(p[1]));
+        console.log('有效坐标点数量:', validPoints.length);
+        
+        return validPoints;
       } catch (error) {
         console.error('解析 polyline 失败:', error);
         return [];
@@ -1823,6 +2000,115 @@ $dark-text: #1a2b49;
 
           &:active {
             transform: scale(0.98);
+          }
+        }
+      }
+
+      // 公交路线详情
+      .route-description {
+        margin-top: 16px;
+        padding: 16px;
+        background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);
+        border-radius: 8px;
+        border-left: 4px solid #409EFF;
+        overflow: visible; // 确保展开时不被父容器裁剪
+        min-height: 80px; // 最小高度，防止内容切换时跳动
+
+        // 没有找到线路提示
+        .no-route-message {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 20px 0;
+          text-align: center;
+
+          i {
+            font-size: 48px;
+            color: #E6A23C;
+            margin-bottom: 12px;
+          }
+
+          .message-text {
+            font-size: 15px;
+            color: #909399;
+            font-weight: 500;
+          }
+        }
+
+        .route-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 15px;
+          font-weight: 600;
+          color: #409EFF;
+          margin-bottom: 10px;
+
+          i {
+            font-size: 18px;
+          }
+        }
+
+        .route-content {
+          font-size: 14px;
+          line-height: 1.8;
+          color: #333;
+          padding-left: 26px;
+          word-break: break-word; // 允许单词内换行
+          overflow-wrap: break-word; // 长单词换行
+          
+          // 折叠状态
+          &.collapsed {
+            max-height: 60px; // 约3行高度
+            overflow: hidden;
+            position: relative;
+            
+            // 添加渐变遮罩
+            &::after {
+              content: '';
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              height: 30px;
+              background: linear-gradient(to bottom, transparent, #e6f0ff);
+            }
+          }
+          
+          // 展开状态 - 移除高度限制
+          &:not(.collapsed) {
+            max-height: none !important;
+            overflow: visible !important;
+            height: auto !important;
+          }
+          
+          // 公交路线高亮显示
+          strong {
+            color: #409EFF;
+            font-weight: 600;
+          }
+        }
+        
+        // 切换按钮
+        .route-toggle {
+          text-align: right;
+          margin-top: 8px;
+          padding-left: 26px;
+          
+          .toggle-btn {
+            color: #409EFF;
+            font-size: 13px;
+            padding: 0;
+            
+            &:hover {
+              color: darken(#409EFF, 10%);
+            }
+            
+            i {
+              margin-left: 4px;
+              transition: transform 0.3s;
+            }
           }
         }
       }
