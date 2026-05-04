@@ -26,6 +26,10 @@
                 </div>
                 <p class="upload-tip">例如：2小时30分钟，请输入 小时:2 分钟:30</p>
               </el-form-item>
+              <el-form-item prop="businessHours" label="开放时间">
+                <el-input type="text" v-model="formData.businessHours" style="width: 100%" placeholder="请输入开放时间，如：08:00-18:00" />
+                <p class="upload-tip">例如：08:00-18:00 或 周一至周日 08:00-18:00</p>
+              </el-form-item>
               <el-form-item prop="attractionDesc" label="景点简介">
                 <el-input type="textarea" :row="3" v-model="formData.attractionDesc" style="width: 100%"  placeholder="请输入景点简介"/>
               </el-form-item>
@@ -77,6 +81,7 @@ export default {
           attractionDetail: '',
           attractionPlace: '',
           playHour: null,
+          businessHours: '',
           longitude: '',
           latitude: ''
       },
@@ -109,6 +114,7 @@ export default {
         attractionDetail: '',
         attractionPlace: '',
         playHour: null,
+        businessHours: '',
         longitude: '',
         latitude: ''
       };

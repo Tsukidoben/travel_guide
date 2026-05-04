@@ -75,11 +75,17 @@
           <div class="card-body">
             <h3 class="card-title">{{ item.attractionName }}</h3>
             <div class="card-info two-line">{{ item.attractionDesc }}</div>
-<!--            <div class="card-price">-->
-<!--              <div class="price-value">-->
-<!--                <span class="new-price">{{ item.attractionPlace }}CNY</span>-->
-<!--              </div>-->
-<!--            </div>-->
+            <div class="card-price">
+              <div class="price-value">
+                <span v-if="item.minTicketPrice && item.minTicketPrice > 0" class="price-ticket">
+                  <span class="price-label">门票</span>
+                  <span class="price-symbol">￥</span>
+                  <span class="price-number">{{ item.minTicketPrice }}</span>
+                  <span class="price-unit">起</span>
+                </span>
+                <span v-else class="price-free">免费</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -487,15 +493,41 @@ export default {
 
 .card-price {
   text-align: right;
+  margin-top: 8px;
+  min-height: 28px;
+}
+.price-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+}
+.price-ticket {
+  display: inline-flex;
+  align-items: baseline;
+  color: #d92128;
 }
 .price-label {
-  font-size: 11px;
+  font-size: 12px;
   color: #636872;
+  margin-right: 4px;
 }
-.new-price {
-  color: #d92128;
-  font-size: 18px;
+.price-symbol {
+  font-size: 14px;
   font-weight: bold;
+}
+.price-number {
+  font-size: 20px;
+  font-weight: bold;
+  margin: 0 2px;
+}
+.price-unit {
+  font-size: 12px;
+  color: #d92128;
+}
+.price-free {
+  font-size: 16px;
+  color: #52c41a;
+  font-weight: 500;
 }
 
 @media (max-width: 1100px) { .activity-grid { grid-template-columns: repeat(3, 1fr); } }

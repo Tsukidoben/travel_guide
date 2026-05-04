@@ -85,6 +85,12 @@ public class AttractionInfo  extends Model<AttractionInfo> {
     private Integer playHour;
 
     /**
+     * 营业时间
+     */
+    @TableField(value = "business_hours")
+    private String businessHours;
+
+    /**
      * 创建人
      */
     @TableField(value = "creator", fill = FieldFill.INSERT)
@@ -115,6 +121,12 @@ public class AttractionInfo  extends Model<AttractionInfo> {
 
     @TableField(exist = false)
     private List<TicketInfo>  ticketInfoList;
+
+    /**
+     * 最低票价（非数据库字段，用于列表展示）
+     */
+    @TableField(exist = false)
+    private java.math.BigDecimal minTicketPrice;
 
     @Override
     public Serializable pkVal() {

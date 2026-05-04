@@ -84,6 +84,7 @@
                   <div class="article-body">
                     <h1 class="attr-title">{{ detail.attractionName }}</h1>
                     <div class="meta-info">
+                      <span><i class="el-icon-time"></i>开放时间：{{ detail.businessHours || '暂无信息' }}</span>
                       <span><i class="el-icon-location-outline"></i> {{ detail.attractionPlace }}</span>
                       <span><i class="el-icon-menu"></i>{{ classify.find(item=>item.id == detail.typeId)?.typeName }}</span>
                     </div>
@@ -109,7 +110,10 @@
                           </div>
                         </div>
                       </div>
-                      <el-empty v-else description="暂无可预订门票" :image-size="60"></el-empty>
+                      <div v-else class="free-ticket-badge">
+                        <i class="el-icon-success"></i>
+                        <span>免费开放，无需购票</span>
+                      </div>
                     </div>
 
                     <div class="detail-html-content">
@@ -2404,5 +2408,25 @@ $dark-text: #1a2b49;
 
 .fade-in-enter, .fade-in-leave-to {
   opacity: 0;
+}
+
+// 门票区域免费提示样式
+.free-ticket-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 0;
+  color: #52c41a;
+  
+  i {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+  
+  span {
+    font-size: 15px;
+    font-weight: 500;
+  }
 }
 </style>

@@ -143,6 +143,9 @@ public class AttractionInfoServiceImpl extends ServiceImpl<AttractionInfoMapper,
         if(ObjectUtil.isNotEmpty(resp.getRecords())){
             // 部分需要转译的文字
             this.convert(resp.getRecords());
+            
+            // 批量填充最低票价
+            fillMinTicketPrice(resp.getRecords());
         }
         return resp;
     }
@@ -197,6 +200,46 @@ public class AttractionInfoServiceImpl extends ServiceImpl<AttractionInfoMapper,
             ConvertUtil.of(list, AttractionInfo.class)
                     .done()
                     .convert();
+        }
+    }
+
+    /**
+     * 批量填充景点的最低票价
+     */
+    private void fillMinTicketPrice(List<AttractionInfo> attractionList) {
+        if (CollUtil.isEmpty(attractionList)) {
+            return;
+        }
+        
+        // 提取所有景点 ID
+        List<String> attractionIds = attractionList.stream()
+                .map(AttractionInfo::getId)
+                .collect(java.util.stream.Collectors.toList());
+        
+        // 批量查询每个景点的最低票价
+        List<TicketInfo> tickets = SpringUtil.getBean(TicketInfoService.class)
+                .lambdaQuery()
+                .in(TicketInfo::getAttractionId, attractionIds)
+                .eq(TicketInfo::getStatus, "1")  // 只查询正常状态的门票
+                .select(TicketInfo::getAttractionId, TicketInfo::getTicketPrice)
+                .list();
+        
+        // 按景点 ID 分组，计算每个景点的最低票价
+        Map<String, java.math.BigDecimal> minPriceMap = new java.util.HashMap<>();
+        tickets.stream()
+                .collect(java.util.stream.Collectors.groupingBy(TicketInfo::getAttractionId))
+                .forEach((attractionId, ticketList) -> {
+                    java.math.BigDecimal minPrice = ticketList.stream()
+                            .map(TicketInfo::getTicketPrice)
+                            .filter(ObjectUtil::isNotEmpty)
+                            .min(java.math.BigDecimal::compareTo)
+                            .orElse(null);
+                    minPriceMap.put(attractionId, minPrice);
+                });
+        
+        // 填充到景点对象中
+        for (AttractionInfo attraction : attractionList) {
+            attraction.setMinTicketPrice(minPriceMap.get(attraction.getId()));
         }
     }
 
