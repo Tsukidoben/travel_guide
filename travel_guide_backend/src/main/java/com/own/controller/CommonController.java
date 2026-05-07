@@ -31,4 +31,21 @@ public class CommonController {
         Map<String, Object> result = geoCodeService.geoCode(address);
         return ResultUtil.successWithData(result);
     }
+
+    /**
+     * 经纬度转地址（逆地理编码）
+     *
+     * @param params 请求参数，包含longitude和latitude
+     * @return 地址信息
+     */
+    @PostMapping("/reverseGeoCode")
+    @IgnoreAuth
+    public String reverseGeoCode(@RequestBody Map<String, Object> params) {
+        Double longitude = params.get("longitude") != null ? 
+            Double.valueOf(params.get("longitude").toString()) : null;
+        Double latitude = params.get("latitude") != null ? 
+            Double.valueOf(params.get("latitude").toString()) : null;
+        Map<String, Object> result = geoCodeService.reverseGeoCode(longitude, latitude);
+        return ResultUtil.successWithData(result);
+    }
 }

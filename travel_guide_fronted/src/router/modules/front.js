@@ -97,6 +97,30 @@ const frontRoutes = [
                 },
             },
             {
+                path: "routeGenerate",
+                name: 'routeGenerate',
+                component: () => import('@/views/front/routeRecommend/RouteGenerate.vue'),
+                meta: {
+                    title: '智能行程规划'
+                },
+            },
+            {
+                path: "myRoutes",
+                name: 'myRoutes',
+                component: () => import('@/views/front/routeRecommend/MyRoutes.vue'),
+                meta: {
+                    title: '我的行程'
+                },
+            },
+            {
+                path: "routeDetail/:id",
+                name: 'routeDetail',
+                component: () => import('@/views/front/routeRecommend/RouteDetail.vue'),
+                meta: {
+                    title: '行程详情'
+                },
+            },
+            {
                 path: "hotelInfoFront",
                 name: 'hotelInfoFront',
                 component: () => import('@/views/front/hotelInfoFront/hotelInfo.vue'),

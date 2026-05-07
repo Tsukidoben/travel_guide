@@ -48,9 +48,6 @@
               <el-form-item prop="description" label="小吃简介">
                 <el-input type="textarea" :rows="4" v-model="formData.description" style="width: 100%"  placeholder="请输入小吃简介"/>
               </el-form-item>
-              <el-form-item prop="tasteFeature" label="口味特色">
-                <el-input type="textarea" :rows="4" v-model="formData.tasteFeature" style="width: 100%"  placeholder="请输入口味特色介绍"/>
-              </el-form-item>
               <el-form-item prop="recommendReason" label="推荐理由">
                 <el-input type="textarea" :rows="4" v-model="formData.recommendReason" style="width: 100%"  placeholder="请输入推荐理由"/>
               </el-form-item>
@@ -91,7 +88,6 @@ export default {
         status: 1,
         isRecommend: 0,
         description: '',
-        tasteFeature: '',
         recommendReason: ''
       },
       addUrl: '/api/food/info/saveOrUpdate',
@@ -138,7 +134,6 @@ export default {
         status: 1,
         isRecommend: 0,
         description: '',
-        tasteFeature: '',
         recommendReason: ''
       };
     },

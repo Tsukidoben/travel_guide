@@ -96,6 +96,7 @@ export default {
     initData(){
       request({
         url: config.backHost + "/attractionType/listPage",
+        method: 'POST',
         data: {}
       }).then(res => {
         this.typeIdOptions = res.data;

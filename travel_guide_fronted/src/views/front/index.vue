@@ -2,9 +2,10 @@
   <div style="width: 100%;">
     <div class="nav">
       <div class="navLeft">
-        <div style="display: flex;align-items: center;line-height: 30px;cursor: pointer" @click="$router.push({name:'home'})">
-          <div style="font-size: 20px;font-weight: bold;margin-left: 16px;" class="titleE">{{config.companyNameE}}</div>
-          <div style="font-size: 20px;font-weight: bold;margin-left: 16px;"> {{ config.projectName }}</div>
+        <div class="logo-wrapper" @click="$router.push({name:'home'})">
+          <div class="titleE">{{config.companyNameE}}</div>
+          <div class="divider"></div>
+          <div class="titleCn">{{ config.projectName }}</div>
         </div>
       </div>
       <div class="navRight">
@@ -130,6 +131,14 @@ export default {
         { name: '景点查询', path: '/front/attractionList' },
         { name: '酒店列表', path: '/front/hotelInfoFront' },
         { name: '特色小吃', path: '/front/foodList' },
+        {
+          name: '行程规划',
+          path: 'route',
+          children: [
+            { name: '智能行程', path: '/front/routeGenerate' },
+            { name: '我的行程', path: '/front/myRoutes' }
+          ]
+        },
         {
           name: '内容管理',
           path: 'content',
@@ -315,10 +324,41 @@ export default {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   position: relative;
   z-index: 100;
+  
   .navLeft {
     display: flex;
     align-items: center;
     height: 100%;
+    
+    .logo-wrapper {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      gap: 12px;
+      
+      .titleE {
+        font-size: 22px;
+        font-weight: 700;
+        color: #FF7A2F;
+        letter-spacing: 1px;
+        line-height: 1;
+      }
+      
+      .divider {
+        width: 1px;
+        height: 20px;
+        background-color: #e0e0e0;
+        margin: 0 4px;
+      }
+      
+      .titleCn {
+        font-size: 18px;
+        font-weight: 600;
+        color: $nav-color;
+        letter-spacing: 0.5px;
+        line-height: 1;
+      }
+    }
   }
 
   .navRight {

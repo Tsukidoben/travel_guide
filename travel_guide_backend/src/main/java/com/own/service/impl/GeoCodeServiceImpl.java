@@ -23,6 +23,7 @@ public class GeoCodeServiceImpl implements GeoCodeService {
     private String amapKey;
 
     private static final String GEOCODE_URL = "https://restapi.amap.com/v3/geocode/geo";
+    private static final String REVERSE_GEOCODE_URL = "https://restapi.amap.com/v3/geocode/regeo";
 
     @Override
     public Map<String, Object> geoCode(String address) {
@@ -75,6 +76,60 @@ public class GeoCodeServiceImpl implements GeoCodeService {
             }
         } catch (Exception e) {
             log.error("地理编码异常: {}", e.getMessage(), e);
+        }
+
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> reverseGeoCode(Double longitude, Double latitude) {
+        Map<String, Object> result = new HashMap<>();
+
+        if (longitude == null || latitude == null) {
+            log.warn("经纬度为空，无法进行逆地理编码");
+            return result;
+        }
+
+        if (ObjectUtil.isEmpty(amapKey)) {
+            log.error("高德地图API Key未配置");
+            return result;
+        }
+
+        try {
+            // 构建请求参数
+            Map<String, Object> params = new HashMap<>();
+            params.put("key", amapKey);
+            params.put("location", longitude + "," + latitude);
+            params.put("output", "json");
+            params.put("extensions", "base");
+            params.put("poitype", ""); // 不指定POI类型，获取更通用的地址
+            params.put("radius", 500); // 缩小搜索半径到500米，获取最近的地址
+            params.put("roadlevel", 1); // 返回道路信息
+
+            // 调用高德地图逆地理编码API
+            String response = HttpUtil.get(REVERSE_GEOCODE_URL, params);
+            log.info("高德地图逆地理编码响应: {}", response);
+
+            // 解析响应
+            JSONObject jsonObject = JSONUtil.parseObj(response);
+            String status = jsonObject.getStr("status");
+            String info = jsonObject.getStr("info");
+
+            if ("1".equals(status) && "OK".equals(info)) {
+                JSONObject regeocode = jsonObject.getJSONObject("regeocode");
+                if (regeocode != null) {
+                    String formattedAddress = regeocode.getStr("formatted_address");
+                    if (ObjectUtil.isNotEmpty(formattedAddress)) {
+                        result.put("address", formattedAddress);
+                        result.put("formattedAddress", formattedAddress);
+                        log.info("经纬度 {}, {} 解析成功: {}", longitude, latitude, formattedAddress);
+                    }
+                }
+            } else {
+                log.error("高德地图API返回错误: status={}, info={}", status, info);
+            }
+        } catch (Exception e) {
+            log.error("逆地理编码异常: {}", e.getMessage(), e);
         }
 
         return result;

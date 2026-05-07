@@ -99,6 +99,7 @@ export default {
       this.newUploadImgKey = new Date().getTime()
         request({
           url: config.backHost + "/attractionType/listPage",
+          method: 'POST',
           data: {}
         }).then(res => {
           this.typeIdOptions = res.data;

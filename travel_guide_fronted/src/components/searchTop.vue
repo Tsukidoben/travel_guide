@@ -99,6 +99,7 @@
               // 如果携带url，则需要查询
               request({
                 url: config.backHost + item.apiConfig.url,
+                method: 'POST',
                 data: item.apiConfig.data ? item.apiConfig.data : {},
               }).then(res => {
                 this.$set(item, 'data', res.data);

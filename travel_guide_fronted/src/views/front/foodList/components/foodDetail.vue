@@ -1,9 +1,21 @@
 <template>
   <div class="food-detail-container">
     <div class="content-wrapper">
-      <el-page-header style="padding: 0 12.5px" @back="$router.go(-1)" content="小吃详情" class="custom-header"></el-page-header>
-      <!-- 图片展示区 - 轮播图 -->
-      <div class="section-card" v-if="foodDetail.foodPic">
+      <!-- 优化后的顶部导航区 -->
+      <div class="page-header">
+        <div class="back-btn" @click="$router.go(-1)">
+          <i class="el-icon-arrow-left"></i>
+          <span>返回列表</span>
+        </div>
+        <h1 class="food-name">{{ foodDetail.foodName }}</h1>
+        <div class="collect-btn" @click="toggleFavorite">
+          <span v-if="isFavorited" class="heart-icon active">❤</span>
+          <span v-else class="heart-icon">♡</span>
+          <span>{{ isFavorited ? '已收藏' : '收藏' }}</span>
+        </div>
+      </div>
+      <!-- 图片展示区 - 轮播图（带hover效果） -->
+      <div class="section-card image-section" v-if="foodDetail.foodPic">
         <div class="image-carousel">
           <el-carousel 
             :height="getPicArray(foodDetail.foodPic).length > 1 ? '450px' : 'auto'"
@@ -18,6 +30,10 @@
                 :preview-src-list="getPicArray(foodDetail.foodPic).map(p => getPicUrl(p))"
                 fit="cover"
                 class="carousel-image">
+                <div slot="error" class="image-error">
+                  <i class="el-icon-picture-outline"></i>
+                  <span>图片加载失败</span>
+                </div>
               </el-image>
             </el-carousel-item>
           </el-carousel>
@@ -27,89 +43,110 @@
               :preview-src-list="[getPicUrl(getPicArray(foodDetail.foodPic)[0])]"
               fit="cover"
               class="single-image-inner">
+              <div slot="error" class="image-error">
+                <i class="el-icon-picture-outline"></i>
+                <span>图片加载失败</span>
+              </div>
             </el-image>
           </div>
         </div>
       </div>
 
-      <!-- 基本信息头部 -->
-      <div class="info-header">
-        <div class="header-left">
-          <div class="food-name-row">
-            <h1 class="food-name">{{ foodDetail.foodName }}</h1>
-            <el-tag v-if="foodDetail.categoryName" type="warning" size="small" effect="plain">
-              <i class="el-icon-menu"></i> {{ foodDetail.categoryName }}
-            </el-tag>
-          </div>
-          
-          <!-- 店铺名和地点信息 -->
-          <div class="shop-location-row" v-if="shopInfo.shopName || shopInfo.address">
-            <span class="shop-name-inline" v-if="shopInfo.shopName">
+
+
+      <!-- 基础信息卡片（图标化） -->
+      <div class="section-card info-card-section">
+        <div class="info-grid">
+          <div class="info-item" v-if="shopInfo.shopName">
+            <div class="info-icon">
               <i class="el-icon-office-building"></i>
-              {{ shopInfo.shopName }}
-            </span>
-            <span class="location-inline" v-if="shopInfo.address">
-              <i class="el-icon-location-outline"></i>
-              {{ shopInfo.address }}
-            </span>
+            </div>
+            <div class="info-content">
+              <span class="info-label">店铺</span>
+              <span class="info-value">{{ shopInfo.shopName }}</span>
+            </div>
           </div>
           
-          <div class="rating-box">
-            <el-rate v-model="foodDetail.score" disabled show-score text-color="#ff9900"></el-rate>
-            <span class="score-text">{{ foodDetail.score }}分</span>
-            <span class="review-count">{{ commentTotal }}条评价</span>
+          <div class="info-item" v-if="shopInfo.address">
+            <div class="info-icon">
+              <i class="el-icon-location-outline"></i>
+            </div>
+            <div class="info-content">
+              <span class="info-label">地址</span>
+              <span class="info-value address-text" @click="copyAddress" :title="'点击复制地址'">
+                {{ shopInfo.address }}
+                <i class="el-icon-document-copy copy-icon"></i>
+              </span>
+            </div>
           </div>
-          <div class="meta-info">
-            <span class="price-tag">
+          
+          <div class="info-item">
+            <div class="info-icon">
+              <i class="el-icon-star-on"></i>
+            </div>
+            <div class="info-content">
+              <span class="info-label">评分</span>
+              <span class="info-value score-value">
+                <el-rate v-model="foodDetail.score" disabled show-score text-color="#ff9900"></el-rate>
+                <span class="score-num">{{ foodDetail.score }}分</span>
+                <span class="review-count">({{ commentTotal }}条评价)</span>
+              </span>
+            </div>
+          </div>
+          
+          <div class="info-item">
+            <div class="info-icon">
               <i class="el-icon-coin"></i>
-              ¥{{ foodDetail.avgPrice }}<small>/人</small>
-            </span>
-            <el-tag v-if="foodDetail.isRecommend" type="danger" size="medium" effect="dark">
-              <i class="el-icon-star-on"></i> 必吃推荐
-            </el-tag>
-            <template v-if="foodDetail.tags">
-              <el-tag v-for="(tag, idx) in foodDetail.tags.split(',').filter(t => t.trim())" :key="idx" size="small" type="info" effect="plain">
-                {{ tag.trim() }}
-              </el-tag>
-            </template>
-          </div>
-        </div>
-        <div class="header-right">
-          <div class="collect-btn" @click="toggleFavorite">
-            <span v-if="isFavorited" class="heart-icon active">❤</span>
-            <span v-else class="heart-icon">♡</span>
-            <span>{{ isFavorited ? '已收藏' : '收藏' }}</span>
+            </div>
+            <div class="info-content">
+              <span class="info-label">人均</span>
+              <span class="info-value price-value">
+                ¥{{ foodDetail.avgPrice }}/人
+                <el-tag size="mini" type="success" effect="dark" class="value-tag">性价比高</el-tag>
+              </span>
+            </div>
           </div>
         </div>
       </div>
-
-      <!-- 基础信息区 -->
+      <!-- 小吃简介 & 推荐理由（带展开收起） -->
       <div class="section-card intro-section">
         <h2 class="section-title">
           <i class="el-icon-info"></i>
           小吃简介
         </h2>
         <div class="intro-content">
-          <div class="content-text">
+          <div class="content-text" :class="{ 'collapsed': !showFullIntro }">
             <p>{{ foodDetail.introduction }}</p>
           </div>
+          <div class="expand-btn" v-if="needExpand" @click="toggleIntro">
+            <span>{{ showFullIntro ? '收起' : '展开' }}</span>
+            <i :class="showFullIntro ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
+          </div>
         </div>
+        
+        <!-- 口味特色标签化 -->
         <div class="taste-feature" v-if="foodDetail.tasteFeature">
           <h3 class="sub-title">
             <i class="el-icon-food"></i>
             口味特色
           </h3>
-          <div class="feature-content">
-            <p>{{ foodDetail.tasteFeature }}</p>
+          <div class="feature-tags">
+            <span v-for="(tag, idx) in parseTags(foodDetail.tasteFeature)" :key="idx" class="feature-tag">
+              {{ tag }}
+            </span>
           </div>
         </div>
+        
+        <!-- 推荐理由标签化 -->
         <div class="recommend-reason" v-if="foodDetail.recommendReason">
           <h3 class="sub-title recommend">
             <i class="el-icon-star-on"></i>
             推荐理由
           </h3>
-          <div class="reason-content">
-            <p>{{ foodDetail.recommendReason }}</p>
+          <div class="reason-tags">
+            <span v-for="(reason, idx) in parseTags(foodDetail.recommendReason)" :key="idx" class="reason-tag">
+              {{ reason }}
+            </span>
           </div>
         </div>
       </div>
@@ -207,7 +244,7 @@
           <el-input 
             type="textarea" 
             :rows="3" 
-            placeholder="觉得小吃怎么样？快来评价吧..." 
+            placeholder="分享你的品尝体验吧..." 
             v-model="commentForm.content">
           </el-input>
           <div class="comment-action-bar">
@@ -246,7 +283,7 @@
         <div v-else class="empty-comment">
           <div class="empty-wrapper">
             <i class="el-icon-chat-line-square empty-icon"></i>
-            <p class="empty-text">暂无评价，快来抢沙发吧~</p>
+            <p class="empty-text">暂无评价，快来抢沙发，成为第一个评价的用户吧~</p>
           </div>
         </div>
 
@@ -295,6 +332,8 @@ export default {
       isFavorited: false,
       showCommentDialog: false,
       submitLoading: false,
+      showFullIntro: false, // 简介展开状态
+      needExpand: false, // 是否需要展开按钮
       commentForm: {
         score: 5,
         content: '',
@@ -312,6 +351,7 @@ export default {
       // 先获取小吃详情，然后在回调中获取店铺信息
       this.getFoodDetail().then(() => {
         this.getShopInfo();
+        this.checkNeedExpand(); // 检查是否需要展开按钮
       });
       this.getComments();
       // 确保 foodId 已经赋值后再检查收藏状态
@@ -319,6 +359,12 @@ export default {
         this.checkFavorite();
       });
     }
+    
+    // 监听滚动事件（已移除返回顶部功能）
+    // window.addEventListener('scroll', this.handleScroll);
+  },
+  beforeDestroy() {
+    // window.removeEventListener('scroll', this.handleScroll);
   },
   methods: {
     // 添加 getPicUrl 方法
@@ -595,6 +641,88 @@ export default {
         '暂停营业': 'info'
       };
       return typeMap[status] || 'info';
+    },
+    
+    // 解析标签（将逗号分隔的字符串转为数组）
+    parseTags(text) {
+      if (!text) return [];
+      return text.split(/[,，、]/).filter(t => t.trim()).map(t => t.trim());
+    },
+    
+    // 检查是否需要展开按钮
+    checkNeedExpand() {
+      this.$nextTick(() => {
+        const contentEl = this.$el.querySelector('.content-text');
+        if (contentEl) {
+          this.needExpand = contentEl.scrollHeight > 120; // 如果内容高度超过120px，显示展开按钮
+        }
+      });
+    },
+    
+    // 切换简介展开/收起
+    toggleIntro() {
+      this.showFullIntro = !this.showFullIntro;
+    },
+    
+    // 复制地址
+    copyAddress() {
+      if (!this.shopInfo.address) return;
+      
+      // 创建临时输入框
+      const input = document.createElement('input');
+      input.value = this.shopInfo.address;
+      document.body.appendChild(input);
+      input.select();
+      
+      try {
+        document.execCommand('copy');
+        this.$message.success('地址已复制到剪贴板');
+      } catch (err) {
+        this.$message.error('复制失败，请手动复制');
+      }
+      
+      document.body.removeChild(input);
+    },
+    
+    // 导航到店
+    navigateToShop() {
+      if (!this.shopInfo.address) {
+        this.$message.warning('暂无地址信息');
+        return;
+      }
+      
+      // 跳转到高德地图
+      const address = encodeURIComponent(this.shopInfo.address);
+      const url = `https://www.amap.com/search?query=${address}`;
+      window.open(url, '_blank');
+    },
+    
+    // 拨打电话
+    callPhone() {
+      if (!this.shopInfo.phone) {
+        this.$message.warning('暂无电话信息');
+        return;
+      }
+      
+      // 移动端直接拨号，PC端提示
+      if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        window.location.href = `tel:${this.shopInfo.phone}`;
+      } else {
+        // PC端复制电话号码
+        const input = document.createElement('input');
+        input.value = this.shopInfo.phone;
+        document.body.appendChild(input);
+        input.select();
+        
+        try {
+          document.execCommand('copy');
+          this.$message.success('电话号码已复制，请拨打');
+        } catch (err) {
+          this.$message.error('复制失败');
+        }
+        
+        document.body.removeChild(input);
+      }
     }
   }
 }
@@ -608,18 +736,106 @@ export default {
 }
 
 .content-wrapper {
-  max-width: 1200px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 40px 24px;
 }
 
-.custom-header {
+// 顶部导航区样式
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 24px;
-  background: transparent;
-  padding: 0 !important;
+  padding: 16px 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    color: #333;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    user-select: none;
+    
+    i {
+      font-size: 18px;
+    }
+    
+    &:hover {
+      background: #f5f5f5;
+      transform: scale(1.05);
+    }
+    
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+  
+  .food-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: #1a2b49;
+    margin: 0;
+    flex: 1;
+    text-align: center;
+  }
+  
+  .collect-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: #999;
+    padding: 8px 16px;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    user-select: none;
+    border: none;
+    background: none;
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.04);
+      transform: translateY(-1px);
+    }
+    
+    &.collected {
+      color: #FF7A2F;
+    }
+    
+    .heart-icon {
+      font-size: 20px;
+      transition: all 0.3s ease;
+      
+      &.active {
+        color: #FF7A2F;
+      }
+    }
+    
+    span:last-child {
+      white-space: nowrap;
+    }
+  }
 }
 
 // 图片轮播样式
+.image-section {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .image-carousel {
   border-radius: 16px;
   overflow: hidden;
@@ -629,6 +845,34 @@ export default {
     width: 100%;
     height: 100%;
     cursor: pointer;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: scale(1.02);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+  }
+  
+  .image-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background: #f5f7fa;
+    color: #999;
+    
+    i {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+    
+    span {
+      font-size: 14px;
+    }
   }
   
   .single-image {
@@ -687,223 +931,111 @@ export default {
 }
 
 // 基本信息头部 - 重新设计
-.info-header {
+.info-card-section {
   background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
-  padding: 40px;
-  border-radius: 16px;
-  margin-bottom: 28px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-  border: 1px solid rgba(0,0,0,0.04);
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
   
-  &:hover {
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-    transform: translateY(-2px);
-  }
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 5px;
-    background: linear-gradient(90deg, #ff6b35 0%, #ffa726 50%, #ffca28 100%);
-    border-radius: 16px 16px 0 0;
-  }
-  
-  .header-left {
-    flex: 1;
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
     
-    .food-name-row {
+    .info-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
+      padding: 16px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: all 0.3s ease;
+      border: 1px solid rgba(0,0,0,0.04);
       
-      .food-name {
-        font-size: 34px;
-        font-weight: 700;
-        color: #1a2b49;
-        margin: 0;
-        line-height: 1.2;
-        letter-spacing: 0.5px;
+      &:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
       }
       
-      ::v-deep .el-tag {
-        flex-shrink: 0;
-        padding: 6px 14px;
-        font-size: 13px;
-        font-weight: 600;
-        
-        i {
-          margin-right: 4px;
-        }
-      }
-    }
-    
-    // 店铺名和地点信息行
-    .shop-location-row {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      margin-bottom: 18px;
-      padding: 12px 16px;
-      background: rgba(255, 107, 53, 0.04);
-      border-radius: 10px;
-      border-left: 4px solid #ff6b35;
-      
-      .shop-name-inline,
-      .location-inline {
+      .info-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ff6b35 0%, #ffa726 100%);
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 15px;
-        color: #555;
-        font-weight: 500;
+        justify-content: center;
+        margin-right: 14px;
+        flex-shrink: 0;
+        box-shadow: 0 3px 10px rgba(255, 107, 53, 0.25);
         
         i {
-          font-size: 18px;
-          color: #ff6b35;
+          font-size: 22px;
+          color: #fff;
         }
       }
       
-      .shop-name-inline {
-        color: #1a2b49;
-        font-weight: 600;
+      .info-content {
+        flex: 1;
         
-        i {
-          color: #ff8a45;
-        }
-      }
-    }
-    
-    .rating-box {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-      padding: 12px 16px;
-      background: rgba(255, 152, 0, 0.05);
-      border-radius: 12px;
-      border: 1px solid rgba(255, 152, 0, 0.1);
-      
-      ::v-deep .el-rate {
-        font-size: 20px;
-      }
-      
-      .score-text {
-        margin-left: 14px;
-        font-size: 22px;
-        color: #ff6b35;
-        font-weight: 700;
-      }
-      
-      .review-count {
-        margin-left: 18px;
-        font-size: 14px;
-        color: #666;
-        padding: 4px 12px;
-        background: #fff;
-        border-radius: 12px;
-        border: 1px solid #e8e8e8;
-      }
-    }
-    
-    .meta-info {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-      
-      .price-tag {
-        font-size: 28px;
-        color: #e53935;
-        font-weight: 700;
-        display: flex;
-        align-items: baseline;
-        gap: 4px;
-        
-        i {
-          font-size: 24px;
-        }
-        
-        small {
-          font-size: 15px;
-          font-weight: 500;
+        .info-label {
+          display: block;
+          font-size: 13px;
           color: #999;
+          margin-bottom: 6px;
         }
-      }
-      
-      ::v-deep .el-tag {
-        font-weight: 500;
-        padding: 6px 12px;
         
-        i {
-          margin-right: 4px;
+        .info-value {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 15px;
+          color: #333;
+          font-weight: 600;
+          
+          &.address-text {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            
+            &:hover {
+              color: #FF7A2F;
+            }
+            
+            .copy-icon {
+              font-size: 16px;
+              color: #FF7A2F;
+              opacity: 0;
+              transition: opacity 0.3s ease;
+            }
+            
+            &:hover .copy-icon {
+              opacity: 1;
+            }
+          }
+          
+          &.score-value {
+            flex-wrap: wrap;
+            
+            .score-num {
+              color: #ff6b35;
+              font-weight: 700;
+              font-size: 18px;
+            }
+            
+            .review-count {
+              color: #999;
+              font-size: 13px;
+              font-weight: normal;
+            }
+          }
+          
+          &.price-value {
+            color: #e53935;
+            font-size: 18px;
+            font-weight: 700;
+            
+            .value-tag {
+              margin-left: 8px;
+            }
+          }
         }
-      }
-    }
-  }
-  
-  .header-right {
-    display: flex;
-    gap: 14px;
-    margin-left: 32px;
-    flex-shrink: 0;
-    align-items: center;
-    
-    .collect-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      font-size: 15px;
-      font-weight: 600;
-      color: #1a2b49;
-      padding: 10px 20px;
-      border-radius: 24px;
-      transition: all 0.3s ease;
-      user-select: none;
-      
-      &:hover {
-        background: rgba(0, 0, 0, 0.04);
-        transform: translateY(-1px);
-      }
-      
-      .heart-icon {
-        font-size: 20px;
-        transition: all 0.3s ease;
-        
-        &.active {
-          color: #ff4757;
-        }
-      }
-      
-      span:last-child {
-        white-space: nowrap;
-      }
-    }
-    
-    ::v-deep .el-button {
-      padding: 12px 28px;
-      font-size: 15px;
-      font-weight: 600;
-      border-radius: 24px;
-      transition: all 0.3s ease;
-      
-      i {
-        margin-right: 6px;
-        font-size: 16px;
-      }
-      
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       }
     }
   }
@@ -952,6 +1084,9 @@ export default {
 
 .comment-section {
   background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .section-title-row {
@@ -1030,13 +1165,55 @@ export default {
     background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
     border-radius: 12px;
     border-left: 5px solid #ff6b35;
+    transition: all 0.3s ease;
+    
+    &.collapsed {
+      max-height: 120px;
+      overflow: hidden;
+      position: relative;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        background: linear-gradient(to top, rgba(255,255,255,1), rgba(255,255,255,0));
+      }
+    }
     
     p {
       font-size: 16px;
-      line-height: 2;
+      line-height: 1.6;
       color: #333;
       margin: 0;
       text-align: justify;
+    }
+  }
+  
+  .expand-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 10px 20px;
+    cursor: pointer;
+    color: #FF7A2F;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    user-select: none;
+    
+    &:hover {
+      background: rgba(255, 122, 47, 0.1);
+      transform: translateY(-1px);
+    }
+    
+    i {
+      font-size: 16px;
     }
   }
 }
@@ -1059,18 +1236,25 @@ export default {
     }
   }
   
-  .feature-content {
-    padding: 20px;
-    background: linear-gradient(135deg, #fff8e1 0%, #ffffff 100%);
-    border-radius: 12px;
-    border-left: 5px solid #ffa726;
+  .feature-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     
-    p {
-      font-size: 15px;
-      line-height: 1.9;
-      color: #555;
-      margin: 0;
-      text-align: justify;
+    .feature-tag {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+      color: #f57c00;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid #ffe082;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+      }
     }
   }
 }
@@ -1093,18 +1277,25 @@ export default {
     }
   }
   
-  .reason-content {
-    padding: 20px;
-    background: linear-gradient(135deg, #ffebee 0%, #ffffff 100%);
-    border-radius: 12px;
-    border-left: 5px solid #ef5350;
+  .reason-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     
-    p {
-      font-size: 15px;
-      line-height: 1.9;
-      color: #555;
-      margin: 0;
-      text-align: justify;
+    .reason-tag {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #FF7A2F 0%, #ff9d66 100%);
+      color: #fff;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 3px 10px rgba(255, 122, 47, 0.3);
+      transition: all 0.3s ease;
+      
+      &:hover {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 6px 16px rgba(255, 122, 47, 0.4);
+      }
     }
   }
 }
@@ -1255,6 +1446,26 @@ export default {
         }
       }
     }
+    
+    // 店铺操作按钮
+    .shop-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px dashed #e8e8e8;
+      
+      .el-button {
+        flex: 1;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+      }
+    }
   }
 }
 
@@ -1373,6 +1584,9 @@ export default {
   border-radius: 16px;
   margin-bottom: 30px;
   box-shadow: 0 4px 12px rgba(253, 230, 216, 0.3);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   
   .score-input {
     margin-bottom: 15px;
@@ -1465,26 +1679,33 @@ export default {
     padding: 24px 16px;
   }
   
-  .info-header {
-    flex-direction: column;
-    padding: 28px;
+  // 顶部导航区移动端适配
+  .page-header {
+    padding: 12px 16px;
     
-    .header-left {
-      .food-name-row {
-        .food-name {
-          font-size: 28px;
-        }
+    .back-btn {
+      font-size: 14px;
+      padding: 6px 10px;
+      
+      span {
+        display: none; // 移动端隐藏文字，只显示箭头
       }
     }
     
-    .header-right {
-      margin-left: 0;
-      margin-top: 24px;
-      width: 100%;
-      
-      ::v-deep .el-button {
-        flex: 1;
-      }
+    .food-name {
+      font-size: 18px;
+    }
+    
+    .collect-btn {
+      font-size: 14px;
+      padding: 6px 12px;
+    }
+  }
+  
+  // 基础信息卡片移动端改为单列
+  .info-card-section {
+    .info-grid {
+      grid-template-columns: 1fr;
     }
   }
   
@@ -1500,6 +1721,15 @@ export default {
       
       .shop-image {
         height: 220px;
+      }
+    }
+    
+    // 店铺操作按钮移动端全宽
+    .shop-actions {
+      flex-direction: column;
+      
+      .el-button {
+        width: 100%;
       }
     }
   }

@@ -447,7 +447,6 @@ import request from "@/utils/request";
 import config from "@/config/config";
 import common from "@/utils/common";
 import uploadImageMore from "@/components/UploadImageMore.vue";
-import { getNextAttraction, getTrafficInfo, getNearFoodShop } from "@/api/routeRecommend";
 
 export default {
   components: {uploadImageMore},
@@ -758,7 +757,13 @@ export default {
       
       this.routeLoading = true;
       try {
-        const res = await getNextAttraction(attractionId);
+        const res = await request({
+          url: config.backHost + '/api/route/getNextAttraction',
+          method: 'POST',
+          data: {
+            attractionId: attractionId
+          }
+        });
         if (res.code === 200) {
           this.nextAttractions = res.data || [];
         }
@@ -789,7 +794,11 @@ export default {
           transportType: 'all' // 获取所有交通方式
         };
             
-        const res = await getTrafficInfo(params);
+        const res = await request({
+          url: config.backHost + '/api/route/getTrafficInfoByType',
+          method: 'POST',
+          data: params
+        });
             
         if (res.code === 200 && res.data && Object.keys(res.data).length > 0) {
           const data = res.data;
@@ -799,14 +808,6 @@ export default {
             bus: data.bus || null,
             taxi: data.taxi || null
           };
-              
-          // 调试信息：打印公交 polyline
-          if (data.bus && data.bus.polyline) {
-            console.log('公交 polyline 原始数据:', data.bus.polyline);
-            console.log('公交 polyline 长度:', data.bus.polyline.length);
-          } else {
-            console.warn('公交 polyline 数据为空');
-          }
               
           // 加载完成后，自动绘制地图（无论有没有 polyline 数据）
           setTimeout(() => {
@@ -833,7 +834,11 @@ export default {
           fromAttractionId: this.$route.query.id,
           toAttractionId: item.id
         };
-        const res = await getNearFoodShop(params);
+        const res = await request({
+          url: config.backHost + '/api/route/getNearFoodShop',
+          method: 'POST',
+          data: params
+        });
         if (res.code === 200) {
           let shops = res.data || [];
           // 按顺路指数降序排序（优先展示离路线近的）
@@ -1176,9 +1181,7 @@ export default {
         
         // 如果是公交模式且有步骤数据，尝试分段绘制
         if (this.currentTrafficType === 'bus' && this.trafficInfo.bus && this.trafficInfo.bus.steps) {
-          console.log('开始分段绘制公交路线，步骤数量:', this.trafficInfo.bus.steps.length);
-          
-          this.trafficInfo.bus.steps.forEach((step, index) => {
+          this.trafficInfo.bus.steps.forEach((step) => {
             if (step.polyline) {
               const points = this.parsePolyline(step.polyline);
               if (points.length > 1) {
@@ -1194,17 +1197,13 @@ export default {
                   lineCap: 'round'
                 });
                 routes.push(line);
-                console.log(`步骤 ${index + 1} (${step.type}): ${points.length} 个坐标点`);
               }
-            } else {
-              console.warn(`步骤 ${index + 1} 缺少 polyline 数据`);
             }
           });
         }
         
         // 如果没有分段数据，或者不是公交模式，绘制单条路线
         if (routes.length === 0 && path.length > 1) {
-          console.log('降级：绘制单条路线');
           let routeColor = '#FF8A45';
           if (this.currentTrafficType === 'bus') {
             routeColor = '#1890FF';
@@ -1228,7 +1227,6 @@ export default {
         if (routes.length > 0) {
           this.mapInstance.add(routes);
           this.polylineInstances = routes;
-          console.log('总共绘制了', routes.length, '条路线段');
           
           const fitViewElements = [this.startMarker, this.endMarker, ...routes];
           
@@ -1239,7 +1237,6 @@ export default {
           
           this.mapInstance.setFitView(fitViewElements);
         } else {
-          console.error('没有有效的路线数据可绘制');
           this.mapInstance.setFitView([this.startMarker, this.endMarker]);
         }
         
@@ -1269,20 +1266,13 @@ export default {
       if (!polylineStr) return [];
       
       try {
-        // 调试信息：打印原始 polyline 数据
-        console.log('原始 polyline 数据:', polylineStr);
-        console.log('polyline 类型:', typeof polylineStr);
-        console.log('polyline 长度:', polylineStr.length);
-        
         // polyline 可能是 JSON 字符串或分号分隔的字符串
         let points = [];
         if (typeof polylineStr === 'string') {
           // 尝试解析 JSON
           if (polylineStr.startsWith('[')) {
-            console.log('检测到 JSON 格式');
             points = JSON.parse(polylineStr);
           } else {
-            console.log('检测到分号分隔格式');
             // 分号分隔格式: "lng,lat;lng,lat"
             points = polylineStr.split(';').map(point => {
               const [lng, lat] = point.split(',').map(Number);
@@ -1291,13 +1281,7 @@ export default {
           }
         }
         
-        // 调试信息：打印解析结果
-        console.log('解析后的坐标点数量:', points.length);
-        console.log('前 3 个坐标点:', points.slice(0, 3));
-        console.log('后 3 个坐标点:', points.slice(-3));
-        
         const validPoints = points.filter(p => !isNaN(p[0]) && !isNaN(p[1]));
-        console.log('有效坐标点数量:', validPoints.length);
         
         return validPoints;
       } catch (error) {

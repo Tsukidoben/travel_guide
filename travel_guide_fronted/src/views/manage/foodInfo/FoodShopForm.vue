@@ -113,8 +113,8 @@ export default {
       }
       if (!this.formData.phone) {
         message += "联系电话不能为空<br>";
-      } else if (!/^1[3-9]\d{9}$/.test(this.formData.phone)) {
-        message += "请输入正确的手机号码<br>";
+      } else if (!/^1[3-9]\d{9}$/.test(this.formData.phone) && !/^(\d{3,4}-?)?\d{7,8}$/.test(this.formData.phone)) {
+        message += "请输入正确的手机号码或固定电话号码<br>";
       }
       return message;
     },

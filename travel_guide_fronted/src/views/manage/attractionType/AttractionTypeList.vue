@@ -85,6 +85,7 @@ export default {
     query(searchForm, pageBean) {
       request({
         url: config.backHost + "/attractionType/listPage",
+        method: 'POST',
         data: { params: searchForm, pageBean: pageBean }
       }).then(res => {
         if (res.code === 200) {

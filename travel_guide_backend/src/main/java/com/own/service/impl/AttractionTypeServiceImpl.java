@@ -117,6 +117,7 @@ public class AttractionTypeServiceImpl extends ServiceImpl<AttractionTypeMapper,
 
     @Override
     public List<AttractionType> listFront() {
+        // 直接返回查询结果，不做转换处理
         return this.list();
     }
 
