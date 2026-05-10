@@ -78,17 +78,7 @@
         <el-empty description="暂无数据"></el-empty>
       </div>
 
-      <!-- 分页 -->
-      <div class="pagination-container" v-if="foodList.length>0">
-        <el-pagination
-          background
-          @current-change="handlePageChange"
-          :current-page="pageNum"
-          :page-size="pageSize"
-          layout="total, prev, pager, next, jumper"
-          :total="total">
-        </el-pagination>
-      </div>
+
     </main>
   </div>
 </template>
@@ -116,7 +106,7 @@ export default {
       foodList: [],
       favoriteList: [],
       pageNum: 1,
-      pageSize: 12,
+      pageSize: 100,  // 增大pageSize以显示更多数据
       total: 0,
       showLeftArrow: false,
       showRightArrow: false

@@ -169,6 +169,17 @@ public class RouteRecommendationServiceImpl extends ServiceImpl<RouteRecommendat
         // 0. 检查每日生成次数限制
         checkDailyGenerateLimit();
         
+        // 1. 生成路线（不增加计数）
+        RouteRecommendationResponse response = generateRecommendationWithoutCount(request);
+        
+        // 2. 生成成功后，增加计数
+        incrementDailyGenerateCount();
+        
+        return response;
+    }
+
+    @Override
+    public RouteRecommendationResponse generateRecommendationWithoutCount(RouteRecommendationRequest request) {
         // 1. 参数校验
         validateRequest(request);
 
@@ -336,9 +347,6 @@ public class RouteRecommendationServiceImpl extends ServiceImpl<RouteRecommendat
         // 7. 不自动保存，直接构建响应
         RouteRecommendationResponse response = buildResponse(null, itinerary);
         
-        // 8. 生成成功后，增加计数
-        incrementDailyGenerateCount();
-
         return response;
     }
 
@@ -1338,8 +1346,8 @@ public class RouteRecommendationServiceImpl extends ServiceImpl<RouteRecommendat
     public String saveRecommendationManually(RouteRecommendationRequest request) {
         log.info("用户手动保存路线推荐");
         
-        // 1. 重新生成行程（因为生成时没有保存）
-        RouteRecommendationResponse response = generateRecommendation(request);
+        // 1. 重新生成行程（因为生成时没有保存）- 使用不增加计数的方法
+        RouteRecommendationResponse response = generateRecommendationWithoutCount(request);
         
         if (response == null || response.getItinerary() == null || response.getItinerary().isEmpty()) {
             throw new BaseException("生成行程失败");
@@ -1632,5 +1640,20 @@ public class RouteRecommendationServiceImpl extends ServiceImpl<RouteRecommendat
     public void favoriteRecommendation(String recommendationId) {
         // TODO: 实现收藏功能
         log.info("收藏推荐方案：{}", recommendationId);
+    }
+
+    @Override
+    public Integer getDailyCount() {
+        String userId = ContextUtil.getCurrentUserId();
+        if (ObjectUtil.isEmpty(userId)) {
+            log.warn("用户未登录，无法获取生成次数");
+            return 0;
+        }
+        
+        LocalDate today = LocalDate.now();
+        Integer count = generateCountMapper.getDailyCount(userId, today);
+        
+        log.info("用户 {} 今日已生成 {} 次", userId, count != null ? count : 0);
+        return count != null ? count : 0;
     }
 }

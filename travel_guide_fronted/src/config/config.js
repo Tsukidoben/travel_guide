@@ -21,6 +21,14 @@ const config = {
     companyName: "贵阳旅游攻略系统",
     companyNameE:'TRAVEL-GUIDE',
     msgNumFlag:true,
+    
+    // 高德地图 API Keys
+    amapKeys: {
+        // Web端(JS API) Key - 用于前端地图渲染
+        jsApi: 'ce1da13e89ae4c9a4dfdde2447fba5a7',
+        // Web服务 Key - 用于地图截图等后端服务
+        webService: '39d7276eceb8480b374cb87c77990a82'
+    },
     routesWhiteList: [
         'login',
         'frontIndex',

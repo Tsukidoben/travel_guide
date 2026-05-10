@@ -22,6 +22,14 @@ public interface RouteRecommendationService {
     RouteRecommendationResponse generateRecommendation(RouteRecommendationRequest request);
 
     /**
+     * 生成路线推荐（不增加计数，用于保存时重新生成）
+     *
+     * @param request 推荐请求参数
+     * @return 推荐结果
+     */
+    RouteRecommendationResponse generateRecommendationWithoutCount(RouteRecommendationRequest request);
+
+    /**
      * 手动保存路线推荐
      *
      * @param request 推荐请求参数
@@ -66,4 +74,11 @@ public interface RouteRecommendationService {
      * @param recommendationId 推荐记录ID
      */
     void favoriteRecommendation(String recommendationId);
+
+    /**
+     * 获取用户今日已使用生成次数
+     *
+     * @return 今日生成次数
+     */
+    Integer getDailyCount();
 }

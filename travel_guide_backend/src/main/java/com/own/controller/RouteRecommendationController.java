@@ -111,4 +111,15 @@ public class RouteRecommendationController {
         routeRecommendationService.favoriteRecommendation(recommendationId);
         return ResultUtil.success("收藏成功");
     }
+
+    /**
+     * 获取用户今日已使用生成次数
+     *
+     * @return 今日生成次数
+     */
+    @PostMapping("/getDailyCount")
+    public String getDailyCount() {
+        Integer count = routeRecommendationService.getDailyCount();
+        return ResultUtil.successWithData(count);
+    }
 }

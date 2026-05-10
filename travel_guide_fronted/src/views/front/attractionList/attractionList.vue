@@ -184,6 +184,10 @@ export default {
       }).then(res => {
         if (res.code === 200) {
           this.classify = [...this.classify,...res.data]
+          // 分类数据加载完成后，重新检查溢出
+          this.$nextTick(() => {
+            this.checkOverflow();
+          });
         }
       });
     },
@@ -220,7 +224,8 @@ export default {
   align-items: center;
   justify-content: space-between;
   min-width: 400px;
-  margin: 0 0 0 40px;
+  max-width: 450px;
+  margin: 0 0 0 20px;
   flex-shrink: 0;
 }
 .search-container{
@@ -268,7 +273,9 @@ export default {
   position: relative;
   display: flex;
   align-items: center;
-  width: calc(100% - 440px);
+  width: calc(100% - 470px);
+  min-width: 0;
+  flex: 1;
 }
 
 .filters {
@@ -329,16 +336,15 @@ export default {
 .chevron-right { transform: rotate(45deg); margin-right: 2px; }
 .chevron-left { transform: rotate(-135deg); margin-left: 2px; }
 .filter-pill {
-  padding: 6px 16px;
-  //border: 1px solid #dcdfe6;
+  padding: 6px 12px;
   border-radius: 20px;
-  background: white;
-  font-size: 14px;
-  cursor: pointer;
-  white-space: nowrap;
   background: rgb(235, 238, 241);
   border-color: rgb(235, 238, 241);
   color: #000;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .filter-pill.active {
   background: #1A2B49;

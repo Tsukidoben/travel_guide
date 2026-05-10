@@ -319,7 +319,13 @@ export default {
   mounted() {
     this.loadAttractionTypes()
     this.initDailyCount()  // 初始化每日计数
-    this.restoreTempRoute()  // 恢复临时保存的路线
+    
+    // 等待用户信息加载完成后再恢复临时路线
+    this.$nextTick(() => {
+      setTimeout(() => {
+        this.restoreTempRoute()
+      }, 100)
+    })
   },
   methods: {
     // 切换景点偏好标签
@@ -518,23 +524,44 @@ export default {
       })
     },
 
-    // 初始化每日计数
-    initDailyCount() {
-      const today = new Date().toDateString()  // 获取今天的日期字符串
+    // 初始化每日计数 - 从后端获取真实数据
+    async initDailyCount() {
+      try {
+        // 调用后端接口获取今日已使用次数
+        const res = await request({
+          url: config.backHost + '/api/routeRecommendation/getDailyCount',
+          method: 'POST'
+        })
+        
+        if (res.code === 200 && res.data !== undefined) {
+          // 使用后端返回的真实计数
+          this.dailyGenerateCount = res.data
+          // 同步更新 localStorage（作为缓存）
+          this.saveDailyCount()
+        } else {
+          // 如果接口失败，降级使用 localStorage
+          this.initFromLocalStorage()
+        }
+      } catch (error) {
+        // 降级方案：使用 localStorage
+        this.initFromLocalStorage()
+      }
+    },
+
+    // 从 localStorage 初始化（降级方案）
+    initFromLocalStorage() {
+      const today = new Date().toDateString()
       const stored = localStorage.getItem('routeGenerateCount')
-      
+          
       if (stored) {
         const { date, count } = JSON.parse(stored)
-        // 如果是今天，恢复计数
         if (date === today) {
           this.dailyGenerateCount = count
         } else {
-          // 如果不是今天，重置计数
           this.dailyGenerateCount = 0
           this.saveDailyCount()
         }
       } else {
-        // 首次使用
         this.dailyGenerateCount = 0
       }
     },
@@ -542,10 +569,11 @@ export default {
     // 保存每日计数到 localStorage
     saveDailyCount() {
       const today = new Date().toDateString()
-      localStorage.setItem('routeGenerateCount', JSON.stringify({
+      const data = {
         date: today,
         count: this.dailyGenerateCount
-      }))
+      }
+      localStorage.setItem('routeGenerateCount', JSON.stringify(data))
     },
 
     // 检查今天是否可以生成
@@ -564,9 +592,12 @@ export default {
       return this.maxDailyGenerates - this.dailyGenerateCount
     },
 
-    // 临时保存路线到 sessionStorage
+    // 临时保存路线到 sessionStorage（与用户关联）
     saveTempRoute() {
       try {
+        const userInfo = this.$store.getters.getUser || {}
+        const userId = userInfo.userId || 'anonymous'
+        
         const tempData = {
           routeResult: this.routeResult,
           form: {
@@ -579,20 +610,33 @@ export default {
             preferenceTypes: this.form.preferenceTypes,
             transportPreference: this.form.transportPreference
           },
-          timestamp: Date.now()  // 保存时间戳
+          userId: userId,  // 记录用户 ID
+          timestamp: Date.now()
         }
-        sessionStorage.setItem('tempRouteGenerate', JSON.stringify(tempData))
+        // 使用 userId 作为 key 的一部分，实现用户隔离
+        sessionStorage.setItem(`tempRouteGenerate_${userId}`, JSON.stringify(tempData))
       } catch (error) {
         console.error('临时保存路线失败:', error)
       }
     },
 
-    // 从 sessionStorage 恢复临时保存的路线
+    // 从 sessionStorage 恢复临时保存的路线（与用户关联）
     restoreTempRoute() {
       try {
-        const stored = sessionStorage.getItem('tempRouteGenerate')
+        const userInfo = this.$store.getters.getUser || {}
+        const userId = userInfo.userId || 'anonymous'
+        
+        // 使用当前用户的 key 读取
+        const stored = sessionStorage.getItem(`tempRouteGenerate_${userId}`)
         if (stored) {
           const tempData = JSON.parse(stored)
+          
+          // 检查是否是当前用户的数据
+          if (tempData.userId !== userId) {
+            // 不是当前用户的数据，清除
+            this.clearTempRoute()
+            return
+          }
           
           // 检查是否是今天的数据（最多保留24小时）
           const now = Date.now()
@@ -626,10 +670,12 @@ export default {
       }
     },
 
-    // 清除临时保存的路线
+    // 清除临时保存的路线（与用户关联）
     clearTempRoute() {
       try {
-        sessionStorage.removeItem('tempRouteGenerate')
+        const userInfo = this.$store.getters.getUser || {}
+        const userId = userInfo.userId || 'anonymous'
+        sessionStorage.removeItem(`tempRouteGenerate_${userId}`)
       } catch (error) {
         console.error('清除临时路线失败:', error)
       }
