@@ -1018,11 +1018,9 @@ export default {
           return;
         }
         
-        const amapKey = 'ce1da13e89ae4c9a4dfdde2447fba5a7';
-        
         const script = document.createElement('script');
         script.type = 'text/javascript';
-        script.src = `https://webapi.amap.com/maps?v=2.0&key=${amapKey}&plugin=AMap.Scale,AMap.ToolBar`;
+        script.src = `https://webapi.amap.com/maps?v=2.0&key=${config.amapKeys.jsApi}&plugin=AMap.Scale,AMap.ToolBar`;
         script.onload = () => {
           resolve(window.AMap);
         };

@@ -27,7 +27,7 @@ const config = {
         // Web端(JS API) Key - 用于前端地图渲染
         jsApi: 'ce1da13e89ae4c9a4dfdde2447fba5a7',
         // Web服务 Key - 用于地图截图等后端服务
-        webService: '39d7276eceb8480b374cb87c77990a82'
+        webService: '3153060cf9d1f621b054becd3511c6a1'
     },
     routesWhiteList: [
         'login',

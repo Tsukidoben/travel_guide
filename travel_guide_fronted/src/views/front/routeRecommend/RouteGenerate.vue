@@ -1,8 +1,12 @@
 <template>
   <div class="route-generate-container">
     <div class="page-header">
-      <h2>智能行程规划</h2>
-      <p>根据您的偏好和预算，为您定制专属旅行路线</p>
+      <h2>
+        <i class="el-icon-map-location"></i>
+        智能行程规划
+      </h2>
+      <p class="subtitle-line1">输入出行信息与偏好</p>
+      <p class="subtitle-line2">一键定制专属贵阳旅行路线</p>
     </div>
 
     <!-- 模块A：行程基础信息（必填项） -->
@@ -10,53 +14,63 @@
       <div slot="header" class="card-header">
         <i class="el-icon-document"></i>
         <span class="card-title">行程基础信息</span>
-        <span class="required-hint">*为必填项</span>
+        <span class="required-hint">标 * 为必填项，请完整填写后提交</span>
       </div>
-      <el-form :model="form" :rules="rules" ref="routeForm" label-width="120px">
-        <el-form-item label="行程名称">
-          <el-input 
-            v-model="form.recommendationName" 
-            placeholder="如：贵阳三日游（选填）"
-            maxlength="50"
-            show-word-limit>
-          </el-input>
-        </el-form-item>
-        <el-row :gutter="20">
-          <el-col :span="8">
+      <el-form :model="form" :rules="rules" ref="routeForm" label-width="120px" @blur.native.capture="validateField">
+        <el-row :gutter="24">
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="行程名称">
+              <el-input 
+                v-model="form.recommendationName" 
+                placeholder="例：贵阳三日游（不填将自动生成名称）"
+                maxlength="50"
+                @input="updateNameLength">
+              </el-input>
+              <div class="word-count">{{ form.recommendationName.length }}/50</div>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
             <el-form-item label="旅行天数" prop="days">
               <el-input-number 
                 v-model="form.days" 
                 :min="1" 
                 :max="7" 
-                placeholder="1-7天"
+                placeholder="请输入1-7天"
                 controls-position="right"
-                style="width: 100%">
+                style="width: 100%"
+                @change="validateDays">
               </el-input-number>
+              <div class="field-hint">建议1-7天，超过7天可分段规划</div>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+        </el-row>
+        <el-row :gutter="24">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="总预算(元)" prop="budget">
               <el-input-number 
                 v-model="form.budget" 
-                :min="0" 
+                :min="0.01" 
                 :precision="2"
-                placeholder="请输入预算"
+                placeholder="请输入出行总预算（元）"
                 controls-position="right"
-                style="width: 100%">
+                style="width: 100%"
+                @change="validateBudget">
               </el-input-number>
+              <div class="field-hint">参考：贵阳3日游人均预算建议1500-3000元</div>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
-            <el-form-item label="起点地址" prop="address">
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="起点地址（选填）" prop="address">
               <el-input 
                 v-model="form.address" 
-                placeholder="如：贵阳市观山湖区">
+                placeholder="请输入出发地或点击定位获取地址"
+                class="location-input">
                 <el-button 
                   slot="append" 
                   icon="el-icon-location" 
                   @click="getCurrentLocation"
                   :loading="locating">
-                  定位
+                  {{ locating ? '定位中...' : '定位' }}
                 </el-button>
               </el-input>
             </el-form-item>
