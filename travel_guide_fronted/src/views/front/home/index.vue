@@ -407,4 +407,224 @@ $text-muted: #999;
     background-color: $primary-color;
   }
 }
+
+// ========== 移动端适配 ==========
+@media (max-width: 768px) {
+  .home-page {
+    padding-bottom: 30px;
+  }
+
+  // Banner 移动端优化
+  .banner-wrapper {
+    .el-carousel {
+      height: 40vh !important;
+    }
+
+    .banner-box {
+      .banner-content {
+        bottom: 15%;
+        left: 5%;
+        width: 90vw;
+
+        h2 {
+          font-size: 28px;
+          margin-bottom: 8px;
+        }
+
+        p {
+          font-size: 14px;
+        }
+      }
+    }
+  }
+
+  // 主容器移动端优化
+  .main-container {
+    margin: -60px auto 0;
+    padding: 0 12px;
+
+    // 改为单列布局
+    .el-row {
+      .el-col {
+        width: 100% !important;
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+      }
+    }
+  }
+
+  // 卡片面板移动端优化
+  .card-panel {
+    padding: 16px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+
+    .panel-header {
+      margin-bottom: 16px;
+
+      .header-left {
+        i {
+          font-size: 20px;
+          margin-right: 8px;
+        }
+
+        .title-text {
+          font-size: 18px;
+        }
+      }
+
+      .more-btn {
+        font-size: 13px;
+      }
+    }
+  }
+
+  // 旅游攻略列表移动端优化
+  .guide-body {
+    .guide-item {
+      padding: 12px 0;
+
+      .guide-rank {
+        width: 22px;
+        height: 22px;
+        line-height: 22px;
+        font-size: 13px;
+        margin-right: 10px;
+      }
+
+      .guide-info {
+        .guide-title {
+          font-size: 13px;
+        }
+      }
+    }
+  }
+
+  // 卡片网格移动端优化 - 改为2列
+  .custom-col-5 {
+    width: 50% !important;
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
+    padding: 0 8px;
+  }
+
+  // 旅行卡片移动端优化
+  .travel-card {
+    margin-bottom: 16px;
+
+    .image-wrapper {
+      height: 120px;
+
+      .recommend-badge {
+        padding: 3px 8px;
+        font-size: 10px;
+      }
+    }
+
+    .content {
+      padding: 12px;
+
+      .name {
+        font-size: 14px;
+        margin-bottom: 6px;
+      }
+
+      .desc {
+        font-size: 11px;
+        height: 28px;
+        margin-bottom: 6px;
+      }
+
+      .footer {
+        .price-text {
+          font-size: 16px;
+        }
+
+        .score {
+          font-size: 12px;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  // Banner 更小屏幕优化
+  .banner-wrapper {
+    .el-carousel {
+      height: 35vh !important;
+    }
+
+    .banner-box {
+      .banner-content {
+        h2 {
+          font-size: 22px;
+        }
+
+        p {
+          font-size: 12px;
+        }
+      }
+    }
+  }
+
+  // 主容器
+  .main-container {
+    margin: -50px auto 0;
+    padding: 0 8px;
+  }
+
+  // 卡片面板
+  .card-panel {
+    padding: 12px;
+    margin-bottom: 12px;
+
+    .panel-header {
+      .header-left {
+        i {
+          font-size: 18px;
+        }
+
+        .title-text {
+          font-size: 16px;
+        }
+      }
+
+      .more-btn {
+        font-size: 12px;
+      }
+    }
+  }
+
+  // 卡片网格
+  .custom-col-5 {
+    padding: 0 6px;
+  }
+
+  // 旅行卡片
+  .travel-card {
+    .image-wrapper {
+      height: 100px;
+    }
+
+    .content {
+      padding: 10px;
+
+      .name {
+        font-size: 13px;
+      }
+
+      .desc {
+        font-size: 11px;
+        height: 26px;
+      }
+
+      .footer {
+        .price-text {
+          font-size: 14px;
+        }
+      }
+    }
+  }
+}
 </style>

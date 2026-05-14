@@ -538,4 +538,200 @@ export default {
 
 @media (max-width: 1100px) { .activity-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 800px) { .activity-grid { grid-template-columns: repeat(2, 1fr); } }
+
+// ========== 移动端适配增强 ==========
+@media (max-width: 768px) {
+  .gyg-container {
+    // 过滤栏移动端优化
+    .filter-bar {
+      flex-direction: column;
+      padding: 12px 16px;
+      gap: 12px;
+
+      .filters-outer {
+        width: 100%;
+        order: 2;
+      }
+
+      .nav-top {
+        min-width: auto;
+        max-width: 100%;
+        width: 100%;
+        margin: 0;
+        order: 1;
+      }
+    }
+
+    // 搜索框移动端优化
+    .search-box {
+      padding: 2px 2px 2px 12px;
+
+      input {
+        padding: 6px;
+        font-size: 14px;
+      }
+
+      .search-btn {
+        padding: 6px 16px;
+        font-size: 13px;
+      }
+    }
+
+    // 分类标签移动端优化
+    .filter-pill {
+      padding: 5px 10px;
+      font-size: 13px;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    // 滚动指示器移动端优化
+    .scroll-indicator {
+      width: 40px;
+    }
+
+    .arrow-btn {
+      width: 28px;
+      height: 28px;
+    }
+
+    // 主内容区移动端优化
+    .main-content {
+      padding: 16px;
+    }
+
+    // 结果头部移动端优化
+    .results-header {
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    // 活动卡片移动端优化
+    .activity-card {
+      border-radius: 8px;
+
+      .card-image {
+        height: 140px;
+      }
+
+      .tag {
+        padding: 3px 6px;
+        font-size: 11px;
+      }
+
+      .wishlist-heart {
+        width: 32px;
+        height: 32px;
+        font-size: 22px;
+
+        span {
+          &.active {
+            font-size: 18px;
+          }
+        }
+      }
+
+      .card-body {
+        padding: 10px;
+
+        .card-title {
+          font-size: 16px;
+          height: 18px;
+          line-height: 18px;
+        }
+
+        .card-info {
+          font-size: 13px;
+          line-height: 15px;
+          height: 30px;
+        }
+      }
+
+      .card-price {
+        .price-value {
+          .price-label {
+            font-size: 11px;
+          }
+
+          .price-symbol {
+            font-size: 13px;
+          }
+
+          .price-number {
+            font-size: 18px;
+          }
+
+          .price-unit {
+            font-size: 11px;
+          }
+
+          .price-free {
+            font-size: 14px;
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .gyg-container {
+    .filter-bar {
+      padding: 10px 12px;
+      gap: 10px;
+    }
+
+    .search-box {
+      input {
+        font-size: 13px;
+      }
+
+      .search-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+    }
+
+    .filter-pill {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    .main-content {
+      padding: 12px;
+    }
+
+    .activity-card {
+      .card-image {
+        height: 120px;
+      }
+
+      .card-body {
+        padding: 8px;
+
+        .card-title {
+          font-size: 14px;
+          height: 16px;
+          line-height: 16px;
+        }
+
+        .card-info {
+          font-size: 12px;
+          line-height: 14px;
+          height: 28px;
+        }
+      }
+
+      .card-price {
+        .price-value {
+          .price-number {
+            font-size: 16px;
+          }
+        }
+      }
+    }
+  }
+}
 </style>
