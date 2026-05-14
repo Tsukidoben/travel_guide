@@ -1,0 +1,240 @@
+/* 全局移动端适配样式 */
+
+/* 平板和手机通用样式 */
+@media screen and (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+
+  body {
+    -webkit-overflow-scrolling: touch; /* iOS 平滑滚动 */
+    overflow-x: hidden;
+  }
+
+  /* 优化按钮点击区域 */
+  .el-button {
+    min-height: 44px;
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  /* 优化输入框 */
+  .el-input__inner,
+  .el-textarea__inner {
+    font-size: 16px !important; /* 防止 iOS 自动缩放 */
+    min-height: 44px;
+  }
+
+  /* 优化表格 */
+  .el-table {
+    font-size: 13px;
+    
+    .el-table__header th,
+    .el-table__body td {
+      padding: 8px 0;
+    }
+  }
+
+  /* 优化卡片 */
+  .el-card {
+    margin-bottom: 12px;
+    border-radius: 8px;
+  }
+
+  .el-card__header {
+    padding: 12px 16px;
+  }
+
+  .el-card__body {
+    padding: 16px;
+  }
+
+  /* 优化对话框 */
+  .el-dialog {
+    width: 90% !important;
+    margin-top: 5vh !important;
+  }
+
+  /* 优化弹出框 */
+  .el-message-box {
+    width: 85% !important;
+  }
+
+  /* 优化下拉菜单 */
+  .el-select-dropdown {
+    max-width: 90vw;
+  }
+
+  /* 优化分页 */
+  .el-pagination {
+    text-align: center;
+    
+    button,
+    .el-pager li {
+      min-width: 32px;
+      height: 32px;
+      line-height: 32px;
+    }
+  }
+
+  /* 优化表单 */
+  .el-form-item__label {
+    font-size: 13px;
+  }
+
+  .el-form-item {
+    margin-bottom: 16px;
+  }
+
+  /* 优化导航菜单 */
+  .el-menu {
+    border-right: none;
+  }
+
+  /* 优化图片 */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* 防止横向滚动 */
+  .el-table--scrollable-x {
+    overflow-x: auto;
+  }
+}
+
+/* 手机小屏幕优化 */
+@media screen and (max-width: 480px) {
+  html {
+    font-size: 13px;
+  }
+
+  /* 进一步优化按钮 */
+  .el-button {
+    min-height: 40px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  /* 优化间距 */
+  .el-card {
+    margin-bottom: 8px;
+  }
+
+  .el-card__body {
+    padding: 12px;
+  }
+
+  /* 优化对话框 */
+  .el-dialog {
+    width: 95% !important;
+    margin-top: 3vh !important;
+  }
+
+  .el-dialog__header {
+    padding: 12px 16px;
+  }
+
+  .el-dialog__body {
+    padding: 16px;
+  }
+
+  /* 优化表格横向滚动提示 */
+  .el-table::before {
+    content: '← 左右滑动查看 →';
+    display: block;
+    text-align: center;
+    padding: 8px;
+    background: #f5f7fa;
+    color: #909399;
+    font-size: 12px;
+  }
+
+  /* 优化分页显示 */
+  .el-pagination {
+    .el-pagination__total,
+    .el-pagination__jump {
+      display: none;
+    }
+  }
+
+  /* 优化表单标签 */
+  .el-form-item__label {
+    display: block;
+    width: 100% !important;
+    text-align: left !important;
+    padding-bottom: 4px;
+  }
+
+  .el-form-item__content {
+    margin-left: 0 !important;
+  }
+}
+
+/* 横屏优化 */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+  .el-dialog {
+    margin-top: 2vh !important;
+    max-height: 96vh;
+    overflow-y: auto;
+  }
+
+  .el-message-box {
+    max-height: 90vh;
+  }
+}
+
+/* 触摸优化 */
+@media (hover: none) and (pointer: coarse) {
+  /* 增大触摸目标 */
+  .el-button,
+  .el-menu-item,
+  .el-submenu__title,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 移除 hover 效果，改用 active */
+  .el-button:hover {
+    transform: none;
+  }
+
+  .el-button:active {
+    transform: scale(0.98);
+    opacity: 0.8;
+  }
+
+  /* 优化滚动条 */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* 防止文本选择干扰触摸 */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* 优化长按菜单 */
+.el-dropdown-menu__item {
+  padding: 12px 16px;
+}
