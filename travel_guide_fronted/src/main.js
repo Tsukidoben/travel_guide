@@ -8,6 +8,7 @@ import ElementUI from 'element-ui';
 import $ from "jquery/dist/jquery"
 import 'element-ui/lib/theme-chalk/index.css';
 import '@/assets/css/scroll.css'
+import '@/assets/css/mobile-responsive.css' // 移动端适配样式
 import "@/assets/iconfont/iconfont.css"
 import * as echarts from 'echarts';
 Vue.prototype.$echarts = echarts;

@@ -16,7 +16,7 @@
         <span class="card-title">行程基础信息</span>
         <span class="required-hint">标 * 为必填项，请完整填写后提交</span>
       </div>
-      <el-form :model="form" :rules="rules" ref="routeForm" label-width="120px" @blur.native.capture="validateField">
+      <el-form :model="form" :rules="rules" ref="routeForm" label-width="120px">
         <el-row :gutter="24">
           <el-col :xs="24" :sm="12">
             <el-form-item label="行程名称">
@@ -37,8 +37,7 @@
                 :max="7" 
                 placeholder="请输入1-7天"
                 controls-position="right"
-                style="width: 100%"
-                @change="validateDays">
+                style="width: 100%">
               </el-input-number>
               <div class="field-hint">建议1-7天，超过7天可分段规划</div>
             </el-form-item>
@@ -53,8 +52,7 @@
                 :precision="2"
                 placeholder="请输入出行总预算（元）"
                 controls-position="right"
-                style="width: 100%"
-                @change="validateBudget">
+                style="width: 100%">
               </el-input-number>
               <div class="field-hint">参考：贵阳3日游人均预算建议1500-3000元</div>
             </el-form-item>

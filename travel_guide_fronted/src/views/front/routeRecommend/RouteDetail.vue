@@ -986,6 +986,7 @@ export default {
           scrollY: 0,
           backgroundColor: '#fcf9f7',
           logging: false,
+          willReadFrequently: true, // 优化频繁读取操作的性能
           // 只保留当前天，隐藏其他天
           onclone: (clonedDoc) => {
             clonedDoc.querySelectorAll('.day-section').forEach(sec => {
@@ -1046,6 +1047,13 @@ export default {
       } finally {
         loading.close()
         this.exporting = false
+        
+        // 导出完成后重新初始化地图，防止 WebGL 被破坏
+        this.$nextTick(() => {
+          setTimeout(() => {
+            this.initDayMap()
+          }, 500)
+        })
       }
     },
 
@@ -1850,25 +1858,327 @@ $shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .route-detail-container {
+    padding: 12px;
+
+    .page-header {
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 0;
+
+      .back-btn {
+        order: 1;
+      }
+
+      .page-title {
+        order: 3;
+        width: 100%;
+        font-size: 18px;
+        text-align: center;
+      }
+
+      .export-btn {
+        order: 2;
+        margin-left: auto;
+      }
+    }
+
+    // 行程概览卡片移动端优化
     .overview-card {
       .card-content {
+        padding: 16px;
+
         .overview-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+
+          .grid-item {
+            padding: 10px;
+
+            .icon-wrapper {
+              width: 40px;
+              height: 40px;
+
+              i {
+                font-size: 20px;
+              }
+            }
+
+            .info {
+              .label {
+                font-size: 11px;
+              }
+
+              .value {
+                font-size: 16px;
+              }
+            }
+          }
         }
       }
     }
 
+    // 日期切换Tab栏移动端优化
+    .day-tabs-wrapper {
+      margin-bottom: 16px;
+
+      .day-tabs-container {
+        gap: 8px;
+        padding: 4px;
+
+        .day-tab {
+          padding: 8px 16px;
+          font-size: 13px;
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+    }
+
+    // 行程内容区域移动端优化
+    .all-days-content {
+      .day-section {
+        margin-bottom: 24px;
+
+        .day-title {
+          margin: 20px 0 16px 0;
+          padding-bottom: 8px;
+
+          h3 {
+            font-size: 18px;
+          }
+        }
+
+        // 地图移动端优化
+        .day-route-map {
+          margin: 16px 0 24px 0;
+          border-radius: 8px;
+
+          .map-header {
+            padding: 10px 16px;
+            font-size: 14px;
+
+            i {
+              font-size: 16px;
+            }
+          }
+
+          .map-container {
+            height: 280px !important;
+          }
+
+          .route-points {
+            padding: 12px 16px;
+            gap: 8px;
+
+            .point-item {
+              padding: 5px 10px;
+              font-size: 12px;
+
+              .point-number {
+                width: 20px;
+                height: 20px;
+                font-size: 11px;
+              }
+
+              .point-name {
+                max-width: 120px;
+              }
+            }
+          }
+        }
+
+        // 时间线移动端优化
+        .itinerary-section {
+          .timeline-container {
+            .timeline-item {
+              margin-bottom: 16px;
+
+              .timeline-marker {
+                margin-right: 12px;
+
+                .marker-dot {
+                  width: 36px;
+                  height: 36px;
+
+                  i {
+                    font-size: 16px;
+                  }
+                }
+              }
+
+              .timeline-content {
+                .content-card {
+                  .card-category-tag {
+                    padding: 6px 12px;
+                    font-size: 11px;
+
+                    i {
+                      font-size: 13px;
+                    }
+                  }
+
+                  .card-main {
+                    .card-header {
+                      padding: 12px;
+
+                      .card-title {
+                        font-size: 15px;
+                      }
+
+                      .card-actions {
+                        .action-icon {
+                          padding: 4px;
+
+                          i {
+                            font-size: 16px;
+                          }
+                        }
+
+                        .el-button {
+                          padding: 8px 12px;
+                          font-size: 13px;
+                          min-height: 40px;
+                        }
+                      }
+                    }
+
+                    .card-body {
+                      padding: 12px;
+
+                      .info-tags {
+                        gap: 8px;
+                        flex-wrap: wrap;
+
+                        .info-tag {
+                          padding: 5px 10px;
+                          font-size: 12px;
+
+                          i {
+                            font-size: 13px;
+                          }
+                        }
+                      }
+
+                      .description {
+                        font-size: 13px;
+                        line-height: 1.6;
+                      }
+
+                      .route-path {
+                        font-size: 13px;
+                        padding: 10px;
+
+                        i {
+                          margin: 0 6px;
+                          font-size: 14px;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .route-detail-container {
+    padding: 8px;
+
+    .page-header {
+      .page-title {
+        font-size: 16px;
+      }
+
+      .export-btn {
+        width: 100%;
+        margin-left: 0;
+      }
+    }
+
+    // 行程概览单列布局
+    .overview-card {
+      .card-content {
+        padding: 12px;
+
+        .overview-grid {
+          grid-template-columns: 1fr;
+          gap: 10px;
+
+          .grid-item {
+            padding: 8px;
+          }
+        }
+      }
+    }
+
+    // 地图更小
     .day-route-map {
       .map-container {
-        height: 300px !important;
+        height: 240px !important;
       }
 
       .route-points {
         .point-item {
           .point-name {
             max-width: 100px;
+          }
+        }
+      }
+    }
+
+    // 时间线简化
+    .itinerary-section {
+      .timeline-container {
+        .timeline-item {
+          .timeline-marker {
+            margin-right: 8px;
+
+            .marker-dot {
+              width: 32px;
+              height: 32px;
+
+              i {
+                font-size: 14px;
+              }
+            }
+          }
+
+          .timeline-content {
+            .content-card {
+              .card-main {
+                .card-header {
+                  padding: 10px;
+
+                  .card-title {
+                    font-size: 14px;
+                  }
+                }
+
+                .card-body {
+                  padding: 10px;
+
+                  .info-tags {
+                    .info-tag {
+                      padding: 4px 8px;
+                      font-size: 11px;
+                    }
+                  }
+
+                  .description {
+                    font-size: 12px;
+                  }
+                }
+              }
+            }
           }
         }
       }
